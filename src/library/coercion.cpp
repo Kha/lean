@@ -376,11 +376,10 @@ void initialize_coercion() {
     g_class_name = new name("coercion");
     g_key        = new std::string("COERCE");
     coercion_ext::initialize();
-    register_attribute("coercion", "coercion",
-                       [](environment const & env, io_state const & ios, name const & d, name const & ns, bool persistent) {
-                           return add_coercion(env, ios, d, ns, persistent);
-                       },
-                       [](environment const & env, name const & n) { return static_cast<bool>(is_coercion(env, n)); });
+    register_no_params_attribute("coercion", "coercion",
+                                 [](environment const & env, io_state const & ios, name const & d, name const & ns, bool persistent) {
+                                     return add_coercion(env, ios, d, ns, persistent);
+                                 });
 }
 
 void finalize_coercion() {

@@ -82,7 +82,6 @@ void initialize_library_module() {
 
     initialize_local_context();
     initialize_metavar_context();
-    initialize_attribute_manager();
     initialize_fingerprint();
     initialize_print();
     initialize_placeholder();
@@ -102,6 +101,7 @@ void initialize_library_module() {
     initialize_protected();
     initialize_private();
     initialize_scoped_ext();
+    initialize_attribute_manager();
     initialize_reducible();
     initialize_aliases();
     initialize_export_decl();
