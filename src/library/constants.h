@@ -224,6 +224,7 @@ name const & get_ring_name();
 name const & get_semiring_name();
 name const & get_sigma_name();
 name const & get_sigma_mk_name();
+name const & get_simp_name();
 name const & get_sorry_name();
 name const & get_string_name();
 name const & get_string_empty_name();

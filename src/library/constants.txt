@@ -217,6 +217,7 @@ ring
 semiring
 sigma
 sigma.mk
+simp
 sorry
 string
 string.empty

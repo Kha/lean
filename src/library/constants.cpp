@@ -222,6 +222,7 @@ name const * g_ring = nullptr;
 name const * g_semiring = nullptr;
 name const * g_sigma = nullptr;
 name const * g_sigma_mk = nullptr;
+name const * g_simp = nullptr;
 name const * g_sorry = nullptr;
 name const * g_string = nullptr;
 name const * g_string_empty = nullptr;
@@ -471,6 +472,7 @@ void initialize_constants() {
     g_semiring = new name{"semiring"};
     g_sigma = new name{"sigma"};
     g_sigma_mk = new name{"sigma", "mk"};
+    g_simp = new name{"simp"};
     g_sorry = new name{"sorry"};
     g_string = new name{"string"};
     g_string_empty = new name{"string", "empty"};
@@ -721,6 +723,7 @@ void finalize_constants() {
     delete g_semiring;
     delete g_sigma;
     delete g_sigma_mk;
+    delete g_simp;
     delete g_sorry;
     delete g_string;
     delete g_string_empty;
@@ -970,6 +973,7 @@ name const & get_ring_name() { return *g_ring; }
 name const & get_semiring_name() { return *g_semiring; }
 name const & get_sigma_name() { return *g_sigma; }
 name const & get_sigma_mk_name() { return *g_sigma_mk; }
+name const & get_simp_name() { return *g_simp; }
 name const & get_sorry_name() { return *g_sorry; }
 name const & get_string_name() { return *g_string; }
 name const & get_string_empty_name() { return *g_string_empty; }
