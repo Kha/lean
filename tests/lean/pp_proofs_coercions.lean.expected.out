@@ -1,8 +1,18 @@
 expr ↣ _Fun : expr.app
+string ↣ format : format.of_string
 string ↣ name : mk_simple_name
 C ↣ _Fun : f
+fin ↣ format : format._trans_to_of_nat
+fin ↣ unsigned : unsigned._trans_to_of_nat
+fin ↣ char : char._trans_to_of_nat
+fin ↣ nat : fin.val
+well_founded ↣ _Fun : well_founded.apply
+nat ↣ format : format.of_nat
+nat ↣ unsigned : unsigned.of_nat
+nat ↣ char : char.of_nat
 expr ↣ [fun-class] : expr.app
 C ↣ [fun-class] : f
+well_founded ↣ [fun-class] : well_founded.apply
 c
 c trivial
 c

@@ -14,7 +14,6 @@ section
 
   notation `bla`:100 := 10
   local attribute foo [coercion]
-  print coercions
 end
 
 print coercions -- should be empty

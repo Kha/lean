@@ -50,8 +50,7 @@ namespace nat
   := algebra.add_struct.mk add
 
   definition to_nat (n : num) : nat
-  := #experiment.algebra
-    num.rec nat.zero (λ n, pos_num.rec (succ zero) (λ n r, r + r) (λ n r, r + r + succ zero) n) n
+  := num.rec nat.zero (λ n, pos_num.rec (succ zero) (λ n r, r + r) (λ n r, r + r + succ zero) n) n
 end nat
 
 namespace algebra

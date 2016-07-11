@@ -1,14 +1,30 @@
 f a b : A
 f a b : A
 expr ↣ _Fun : expr.app
+string ↣ format : format.of_string
 string ↣ name : mk_simple_name
-nat ↣ bool : foo
+fin ↣ format : format._trans_to_of_nat
+fin ↣ unsigned : unsigned._trans_to_of_nat
+fin ↣ char : char._trans_to_of_nat
+fin ↣ nat : fin.val
+well_founded ↣ _Fun : well_founded.apply
+nat ↣ format : format.of_nat
+nat ↣ unsigned : unsigned.of_nat
+nat ↣ char : char.of_nat
 expr ↣ [fun-class] : expr.app
-expr ↣ _Fun : expr.app
-string ↣ name : mk_simple_name
-expr ↣ [fun-class] : expr.app
+well_founded ↣ [fun-class] : well_founded.apply
 10 : ?M_1
-local_notation_bug.lean:22:10: error: invalid expression
+local_notation_bug.lean:21:10: error: invalid expression
 expr ↣ _Fun : expr.app
+string ↣ format : format.of_string
 string ↣ name : mk_simple_name
+fin ↣ format : format._trans_to_of_nat
+fin ↣ unsigned : unsigned._trans_to_of_nat
+fin ↣ char : char._trans_to_of_nat
+fin ↣ nat : fin.val
+well_founded ↣ _Fun : well_founded.apply
+nat ↣ format : format.of_nat
+nat ↣ unsigned : unsigned.of_nat
+nat ↣ char : char.of_nat
 expr ↣ [fun-class] : expr.app
+well_founded ↣ [fun-class] : well_founded.apply

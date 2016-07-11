@@ -294,22 +294,22 @@ static unsigned get_num_args(environment const & env, tc_edge const & new_coe) {
 
 static environment add_coercion_core(environment const & env,
                                      name const & from, name const & coe, unsigned num_args, name const & to,
-                                     name const & ns, bool persistent) {
+                                     bool persistent) {
     coercion_state st = coercion_ext::get_state(env);
     pair<environment, list<tc_edge>> new_env_coes = st.m_graph.add(env, from, coe, to);
     environment new_env = new_env_coes.first;
-    new_env = coercion_ext::add_entry(new_env, get_dummy_ios(), coercion_entry(from, coe, num_args, to), ns, persistent);
+    new_env = coercion_ext::add_entry(new_env, get_dummy_ios(), coercion_entry(from, coe, num_args, to), persistent);
     for (tc_edge const & new_coe : new_env_coes.second) {
         unsigned nargs = get_num_args(new_env, new_coe);
         new_env = coercion_ext::add_entry(new_env, get_dummy_ios(),
-                                          coercion_entry(new_coe.m_from, new_coe.m_cnst, nargs, new_coe.m_to), ns, persistent);
-        new_env = set_reducible(new_env, new_coe.m_cnst, reducible_status::Reducible, ns, persistent);
+                                          coercion_entry(new_coe.m_from, new_coe.m_cnst, nargs, new_coe.m_to), persistent);
+        new_env = set_reducible(new_env, new_coe.m_cnst, reducible_status::Reducible, persistent);
         new_env = add_protected(new_env, new_coe.m_cnst);
     }
     return new_env;
 }
 
-static environment add_coercion(environment const & env, name const & f, name const & C, name const & ns, bool persistent) {
+static environment add_coercion(environment const & env, name const & f, name const & C, bool persistent) {
     declaration d = env.get(f);
     unsigned num = 0;
     buffer<expr> args;
@@ -330,7 +330,7 @@ static environment add_coercion(environment const & env, name const & f, name co
                                 << "D t_1 ... t_m\n" << "Type\n" << "Pi x : A, B x\n");
             else if (is_user_class(*cls) && *cls == C)
                 throw exception(sstream() << "invalid coercion, '" << f << "' is a coercion from '" << C << "' to itself");
-            return add_coercion_core(env, C, f, num, *cls, ns, persistent);
+            return add_coercion_core(env, C, f, num, *cls, persistent);
         }
         t = binding_body(t);
         num++;
@@ -338,7 +338,7 @@ static environment add_coercion(environment const & env, name const & f, name co
     }
 }
 
-environment add_coercion(environment const & env, io_state const &, name const & f, name const & ns, bool persistent) {
+environment add_coercion(environment const & env, io_state const &, name const & f, bool persistent) {
     declaration d = env.get(f);
     expr t = d.get_type();
     check_pi(f, t);
@@ -358,10 +358,10 @@ environment add_coercion(environment const & env, io_state const &, name const &
         --i;
         if (i == 0) {
             // last alternative
-            return add_coercion(env, f, Cs[i], ns, persistent);
+            return add_coercion(env, f, Cs[i], persistent);
         } else {
             try {
-                return add_coercion(env, f, Cs[i], ns, persistent);
+                return add_coercion(env, f, Cs[i], persistent);
             } catch (exception &) {
                 // failed, keep trying...
             }
@@ -377,8 +377,8 @@ void initialize_coercion() {
     g_key        = new std::string("COERCE");
     coercion_ext::initialize();
     register_no_params_attribute("coercion", "coercion",
-                                 [](environment const & env, io_state const & ios, name const & d, name const & ns, bool persistent) {
-                                     return add_coercion(env, ios, d, ns, persistent);
+                                 [](environment const & env, io_state const & ios, name const & d, bool persistent) {
+                                     return add_coercion(env, ios, d, persistent);
                                  });
 }
 

@@ -28,14 +28,14 @@ LEAN_THREAD_VALUE(bool, g_throw_ex, false);
 void validate_simp(type_context & tctx, name const & n);
 void validate_congr(type_context & tctx, name const & n);
 
-environment on_add_simp_lemma(environment const & env, io_state const &, name const & c, unsigned, name const &, bool) {
+environment on_add_simp_lemma(environment const & env, io_state const &, name const & c, unsigned, bool) {
     aux_type_context aux_ctx(env);
     type_context & tctx = aux_ctx.get();
     validate_simp(tctx, c);
     return env;
 }
 
-environment on_add_congr_lemma(environment const & env, io_state const &, name const & c, unsigned, name const &, bool) {
+environment on_add_congr_lemma(environment const & env, io_state const &, name const & c, unsigned, bool) {
     aux_type_context aux_ctx(env);
     type_context & tctx = aux_ctx.get();
     validate_congr(tctx, c);
@@ -544,33 +544,9 @@ simp_lemmas get_simp_lemmas(environment const & env) {
     return r;
 }
 
-template<typename NSS>
-simp_lemmas get_simp_lemmas_core(environment const & env, NSS const & nss) {
-    simp_lemmas r;
-    aux_type_context aux_ctx(env);
-    type_context & tctx = aux_ctx.get();
-    for (name const & ns : nss) {
-        buffer<name> decls;
-        get_attribute_instances(env, get_simp_name(), ns, decls);
-        for (auto const & d : decls) {
-            tmp_type_context tmp_tctx(tctx);
-            r = add_core(tmp_tctx, r, d, get_attribute_prio(env, get_simp_name(), d));
-        }
-    }
-    return r;
-}
-
-simp_lemmas get_simp_lemmas(environment const & env, std::initializer_list<name> const & nss) {
-    return get_simp_lemmas_core(env, nss);
-}
-
-simp_lemmas get_simp_lemmas(environment const & env, name const & ns) {
-    return get_simp_lemmas(env, {ns});
-}
-
 void initialize_simp_lemmas() {
-    register_prio_attribute(get_simp_name().get_string(), "simplification lemma", &on_add_simp_lemma);
-    register_prio_attribute(get_congr_name().get_string(), "congruence lemma", &on_add_congr_lemma);
+    register_prio_attribute(get_simp_name().get_string(), "simplification lemma", on_add_simp_lemma);
+    register_prio_attribute(get_congr_name().get_string(), "congruence lemma", on_add_congr_lemma);
 }
 
 void finalize_simp_lemmas() {
