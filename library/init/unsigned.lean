@@ -11,6 +11,7 @@ definition unsigned [reducible] := fin unsigned_sz
 
 namespace unsigned
 
+set_option elaborator.coercions false
 definition of_nat [coercion] (n : nat) : unsigned :=
 if H : n < unsigned_sz then fin.mk n H else fin.mk 0 dec_trivial
 

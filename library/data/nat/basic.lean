@@ -24,6 +24,7 @@ nat.induction_on n
              ...     = succ (succ (n₁ ⊕ m)) : sorry -- by rewrite ih
              ...     = succ (succ n₁ ⊕ m)   : rfl)
 
+set_option elaborator.coercions false
 theorem add_eq_addl (x : ℕ) : ∀y, x + y = x ⊕ y :=
 nat.induction_on x
   (λ y, nat.induction_on y

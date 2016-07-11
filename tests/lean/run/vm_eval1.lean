@@ -20,6 +20,7 @@ definition x : nat := 20
 definition tst (b : bool) (a : nat) : foo b :=
 bool.cases_on b (λ n : nat, n * a) a
 
+set_option elaborator.coercions false
 eval bla ff (λ n : nat, n+10)
 eval bla tt x
 eval boo 11 x

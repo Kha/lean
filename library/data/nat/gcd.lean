@@ -33,6 +33,7 @@ theorem gcd_zero_right [simp] (x : nat) : gcd x 0 = x := rfl
 theorem gcd_succ [simp] (x y : nat) : gcd x (succ y) = gcd (succ y) (x % succ y) :=
 well_founded.fix_eq gcd.F (x, succ y)
 
+set_option elaborator.coercions false
 theorem gcd_one_right (n : ℕ) : gcd n 1 = 1 :=
 calc gcd n 1 = gcd 1 (n % 1)  : gcd_succ n 0
          ... = gcd 1 0        : sorry -- by rewrite mod_one

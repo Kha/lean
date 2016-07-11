@@ -7,6 +7,7 @@ check "ABC"
 
 check str (of_nat 68) (str (of_nat 65) (str (of_nat 66) "abc"))
 
+set_option elaborator.coercions false
 check list.cons (of_nat 65) "abc"
 
 check list.cons (of_nat 66) (list.cons (of_nat 65) list.nil)
