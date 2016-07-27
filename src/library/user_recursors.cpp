@@ -341,13 +341,22 @@ bool is_user_defined_recursor(environment const & env, name const & r) {
 has_recursors_pred::has_recursors_pred(environment const & env):
     m_type2recursors(recursor_ext::get_state(env).m_type2recursors) {}
 
+class recursor_attribute : public unsigned_params_attribute {
+public:
+    recursor_attribute(): unsigned_params_attribute("recursor", "user defined recursor") {}
+    virtual environment set(environment const & env, io_state const & ios, name const & n,
+                            unsigned_params_attribute_data data, bool persistent) const override {
+        if (data.m_params && tail(data.m_params))
+            throw exception(sstream() << "invalid [recursor] declaration, expected at most one parameter");
+        auto env2 = unsigned_params_attribute::set(env, ios, n, data, persistent);
+        return add_user_recursor(env2, n, head_opt(data.m_params), persistent);
+    }
+};
+
 void initialize_user_recursors() {
     g_key        = new std::string("UREC");
     recursor_ext::initialize();
-    register_opt_param_attribute("recursor", "user defined recursor",
-                                 [](environment const & env, io_state const &, name const & d, optional<unsigned> const & major, bool persistent) {
-                                     return add_user_recursor(env, d, major, persistent);
-                                 });
+    register_attribute(recursor_attribute());
 }
 
 void finalize_user_recursors() {
