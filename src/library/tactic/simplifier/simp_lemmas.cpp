@@ -545,8 +545,8 @@ simp_lemmas get_simp_lemmas(environment const & env) {
 }
 
 void initialize_simp_lemmas() {
-    register_prio_attribute(get_simp_name().get_string(), "simplification lemma", on_add_simp_lemma);
-    register_prio_attribute(get_congr_name().get_string(), "congruence lemma", on_add_congr_lemma);
+    register_attribute(prio_attribute(get_simp_name().get_string(), "simplification lemma", on_add_simp_lemma));
+    register_attribute(prio_attribute(get_congr_name().get_string(), "congruence lemma", on_add_congr_lemma));
 }
 
 void finalize_simp_lemmas() {

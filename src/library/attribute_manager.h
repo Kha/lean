@@ -134,13 +134,6 @@ void register_attribute(Attribute attr) {
     register_attribute(attribute_ptr(new Attribute(attr)));
 }
 
-// legacy register functions
-void register_no_params_attribute(char const * attr, char const * descr, basic_attribute::on_set_proc const & on_set);
-void register_no_params_attribute(char const * attr, char const * descr);
-void register_prio_attribute(char const * attr, char const * descr, prio_attribute::on_set_proc const & on_set);
-void register_prio_attribute(char const * attr, char const * descr);
-void register_unsigned_params_attribute(char const *attr, char const *descr);
-
 void register_incompatible(char const * attr1, char const * attr2);
 
 // TODO(sullrich): all of these should become members of/return attribute or a subclass

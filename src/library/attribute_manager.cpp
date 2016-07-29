@@ -135,26 +135,6 @@ environment prio_attribute::set(environment const & env, io_state const & ios, n
     return env2;
 }
 
-void register_no_params_attribute(char const * attr, char const * descr, basic_attribute::on_set_proc const & on_set) {
-    register_attribute(basic_attribute(attr, descr, on_set));
-}
-
-void register_no_params_attribute(char const * attr, char const * descr) {
-    register_attribute(basic_attribute(attr, descr));
-}
-
-void register_prio_attribute(char const * attr, char const * descr, prio_attribute::on_set_proc const & on_set) {
-    register_attribute(prio_attribute(attr, descr, on_set));
-}
-
-void register_prio_attribute(char const * attr, char const * descr) {
-    register_attribute(prio_attribute(attr, descr));
-}
-
-void register_unsigned_params_attribute(char const *attr, char const *descr) {
-    register_attribute(unsigned_params_attribute(attr, descr));
-}
-
 void register_incompatible(char const * attr1, char const * attr2) {
     lean_assert(is_attribute(attr1));
     lean_assert(is_attribute(attr2));
