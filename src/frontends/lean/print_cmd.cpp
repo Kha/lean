@@ -270,7 +270,7 @@ static void print_attributes(parser const & p, name const & n) {
     buffer<char const *> attrs;
     get_attributes(attrs);
     for (char const * attr : attrs) {
-        if (strcmp(attr, "semireducible") == 0)
+        if (strcmp(attr, "reducibility") == 0)
             continue;
         if (has_attribute(env, attr, n)) {
             out << " " << get_attribute_token(attr);
