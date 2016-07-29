@@ -133,7 +133,7 @@ void register_unsigned_params_attribute(char const *attr, char const *descr);
 void register_incompatible(char const * attr1, char const * attr2);
 
 // TODO(sullrich): all of these should become members of/return attribute or a subclass
-bool is_attribute(char const * attr);
+bool is_attribute(std::string const & attr);
 void get_attributes(buffer<char const *> &);
 void get_attribute_tokens(buffer<char const *> &);
 char const * get_attribute_from_token(char const * attr_token);
@@ -148,8 +148,8 @@ bool has_attribute(environment const & env, char const * attr, name const & d);
 void get_attribute_instances(environment const & env, name const & attr, buffer<name> &);
 priority_queue<name, name_quick_cmp> get_attribute_instances_by_prio(environment const & env, name const & attr);
 
-unsigned get_attribute_prio(environment const & env, name const & attr, name const & d);
-list<unsigned> get_attribute_params(environment const & env, name const & attr, name const & d);
+unsigned get_attribute_prio(environment const & env, std::string const & attr, name const & d);
+list<unsigned> get_attribute_params(environment const & env, std::string const & attr, name const & d);
 
 bool are_incompatible(char const * attr1, char const * attr2);
 

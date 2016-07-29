@@ -533,13 +533,13 @@ simp_lemmas get_simp_lemmas(environment const & env) {
     while (i > 0) {
         --i;
         tmp_type_context tmp_tctx(tctx);
-        r = add_core(tmp_tctx, r, simp_lemmas[i], get_attribute_prio(env, get_simp_name(), simp_lemmas[i]));
+        r = add_core(tmp_tctx, r, simp_lemmas[i], get_attribute_prio(env, "simp", simp_lemmas[i]));
     }
     i = congr_lemmas.size();
     while (i > 0) {
         --i;
         tmp_type_context tmp_tctx(tctx);
-        r = add_congr_core(tmp_tctx, r, congr_lemmas[i], get_attribute_prio(env, get_congr_name(), congr_lemmas[i]));
+        r = add_congr_core(tmp_tctx, r, congr_lemmas[i], get_attribute_prio(env, "congr", congr_lemmas[i]));
     }
     return r;
 }
