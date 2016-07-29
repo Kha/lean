@@ -119,46 +119,32 @@ environment attribute::set_core(environment const & env, io_state const & ios, n
     return attribute_ext::add_entry(env, ios, attr_entry(m_id, LEAN_DEFAULT_PRIORITY, attr_record(n, data)), persistent);
 }
 
-environment prio_attribute::set(environment const & env, io_state const & ios, name const & n, unsigned prio,
-                                bool persistent) const {
-    return attribute_ext::add_entry(env, ios, attr_entry(get_name(), prio, attr_record(n, attr_data_ptr(new attr_data))), persistent);
+environment basic_attribute::set(environment const & env, io_state const & ios, name const & n, bool persistent) const {
+    auto env2 = set_core(env, ios, n, attr_data_ptr(new attr_data), persistent);
+    if (m_on_set)
+        env2 = m_on_set(env2, ios, n, persistent);
+    return env2;
 }
 
-class legacy_no_params_attribute : public basic_attribute {
-private:
-    set_no_params_attribute_proc m_on_set;
-public:
-    legacy_no_params_attribute(char const * id, char const * descr, set_no_params_attribute_proc const & on_set) :
-            basic_attribute(id, descr), m_on_set(on_set) {}
-    virtual environment set(environment const & env, io_state const & ios, name const & n, bool persistent) const final override {
-        auto env2 = basic_attribute::set(env, ios, n, persistent);
-        return m_on_set(env2, ios, n, persistent);
-    }
-};
+environment prio_attribute::set(environment const & env, io_state const & ios, name const & n, unsigned prio,
+                                bool persistent) const {
+    auto env2 = attribute_ext::add_entry(env, ios, attr_entry(get_name(), prio, attr_record(n, attr_data_ptr(new attr_data))),
+                                         persistent);
+    if (m_on_set)
+        env2 = m_on_set(env2, ios, n, prio, persistent);
+    return env2;
+}
 
-void register_no_params_attribute(char const * attr, char const * descr, set_no_params_attribute_proc const & on_set) {
-    register_attribute(legacy_no_params_attribute(attr, descr, on_set));
+void register_no_params_attribute(char const * attr, char const * descr, basic_attribute::on_set_proc const & on_set) {
+    register_attribute(basic_attribute(attr, descr, on_set));
 }
 
 void register_no_params_attribute(char const * attr, char const * descr) {
     register_attribute(basic_attribute(attr, descr));
 }
 
-class legacy_prio_attribute : public prio_attribute {
-private:
-    set_prio_attribute_proc m_on_set;
-public:
-    legacy_prio_attribute(char const * id, char const * descr, set_prio_attribute_proc const & on_set) :
-            prio_attribute(id, descr), m_on_set(on_set) {}
-    virtual environment set(environment const & env, io_state const & ios, name const & n, unsigned prio,
-                            bool persistent) const final override {
-        auto env2 = prio_attribute::set(env, ios, n, prio, persistent);
-        return m_on_set(env2, ios, n, prio, persistent);
-    }
-};
-
-void register_prio_attribute(char const * attr, char const * descr, set_prio_attribute_proc const & on_set) {
-    register_attribute(legacy_prio_attribute(attr, descr, on_set));
+void register_prio_attribute(char const * attr, char const * descr, prio_attribute::on_set_proc const & on_set) {
+    register_attribute(prio_attribute(attr, descr, on_set));
 }
 
 void register_prio_attribute(char const * attr, char const * descr) {
@@ -275,4 +261,5 @@ void finalize_attribute_manager() {
     delete g_incomp;
     delete g_attributes;
 }
+
 }

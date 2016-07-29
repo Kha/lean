@@ -33,7 +33,7 @@ private:
 protected:
     environment set_core(environment const &, io_state const &, name const &, attr_data_ptr, bool) const;
     virtual void write_entry(serializer &, attr_data const &) const = 0;
-    virtual std::unique_ptr<attr_data> read_entry(deserializer &) const = 0;
+    virtual attr_data_ptr read_entry(deserializer &) const = 0;
 public:
     attribute(char const * id, char const * descr) : m_id(id), m_descr(descr), m_token(std::string("[") + id) {}
     std::string const & get_name() const { return m_id; }
@@ -44,51 +44,71 @@ typedef std::shared_ptr<attribute const> attribute_ptr;
 
 /** \brief An attribute without associated data or priority declaration */
 class basic_attribute : public attribute {
+public:
+    typedef std::function<environment(environment const &, io_state const &, name const &, bool)> on_set_proc;
+private:
+    on_set_proc m_on_set;
 protected:
     virtual void write_entry(serializer &, attr_data const &) const override final {}
-    virtual std::unique_ptr<attr_data> read_entry(deserializer &) const override final { return {}; }
+    virtual attr_data_ptr read_entry(deserializer &) const override final { return {}; }
 public:
-    basic_attribute(char const * id, char const * descr) : attribute(id, descr) {}
-    virtual environment set(environment const & env, io_state const & ios, name const & n, bool persistent) const {
-        return set_core(env, ios, n, attr_data_ptr(new attr_data), persistent);
-    }
+    basic_attribute(char const * id, char const * descr, on_set_proc on_set) : attribute(id, descr),
+                                                                               m_on_set(on_set) {}
+    basic_attribute(char const * id, char const * descr) : basic_attribute(id, descr, {}) {}
+    virtual environment set(environment const & env, io_state const & ios, name const & n, bool persistent) const;
 };
 
 // TODO(sullrich): Let the attribute handle priority parsing itself by introducing a custom
 // syntax (something like [attr:prio]?)
 class prio_attribute : public attribute {
+public:
+    typedef std::function<environment(environment const &, io_state const &, name const &, unsigned, bool)> on_set_proc;
+private:
+    on_set_proc m_on_set;
 protected:
     virtual void write_entry(serializer &, attr_data const &) const override final {}
-    virtual std::unique_ptr<attr_data> read_entry(deserializer &) const override final { return {}; }
+    virtual attr_data_ptr read_entry(deserializer &) const override final { return {}; }
 public:
-    prio_attribute(char const * id, char const * descr) : attribute(id, descr) {}
+    prio_attribute(char const * id, char const * descr, on_set_proc on_set) : attribute(id, descr),
+                                                                              m_on_set(on_set) {}
+    prio_attribute(char const * id, char const * descr) : prio_attribute(id, descr, {}) {}
     virtual environment set(environment const & env, io_state const & ios, name const & n, unsigned prio,
                             bool persistent) const;
 };
 
 template<typename Data>
 class typed_attribute : public attribute {
+public:
+    typedef std::function<environment(environment const &, io_state const &, name const &, Data const &, bool)>
+            on_set_proc;
+private:
+    on_set_proc m_on_set;
 protected:
     virtual void write_entry(serializer & s, attr_data const & data) const final override {
         lean_assert(dynamic_cast<Data const *>(&data));
-        write_entry_typed(s, static_cast<Data const &>(data));
+        static_cast<Data const &>(data).write(s);
     }
-    virtual std::unique_ptr<attr_data> read_entry(deserializer & d) const final override {
-        return std::unique_ptr<attr_data>(new Data(read_entry_typed(d)));
+    virtual attr_data_ptr read_entry(deserializer & d) const final override {
+        auto data = new Data;
+        data->read(d);
+        return attr_data_ptr(data);
     }
-
-    virtual void write_entry_typed(serializer & s, Data const & data) const = 0;
-    virtual Data read_entry_typed(deserializer & d) const = 0;
 public:
-    typed_attribute(char const * id, char const * descr) : attribute(id, descr) {}
-    virtual environment set(environment const & env, io_state const & ios, name const & n, Data data, bool persistent) const {
-        return set_core(env, ios, n, std::unique_ptr<attr_data>(new Data(data)), persistent);
+    typed_attribute(char const * id, char const * descr, on_set_proc on_set) : attribute(id, descr),
+                                                                               m_on_set(on_set) {}
+    typed_attribute(char const * id, char const * descr) : typed_attribute(id, descr, {}) {}
+    virtual environment set(environment const & env, io_state const & ios, name const & n, Data const & data, bool persistent) const {
+        auto env2 = set_core(env, ios, n, std::unique_ptr<attr_data>(new Data(data)), persistent);
+        if (m_on_set)
+            env2 = m_on_set(env2, ios, n, data, persistent);
+        return env2;
     }
 };
 
 struct unsigned_params_attribute_data : public attr_data {
     list<unsigned> m_params;
     unsigned_params_attribute_data(list<unsigned> const & params) : m_params(params) {}
+    unsigned_params_attribute_data() : unsigned_params_attribute_data(list<unsigned>()) {}
 
     virtual unsigned hash() const override {
         unsigned h = 0;
@@ -96,20 +116,16 @@ struct unsigned_params_attribute_data : public attr_data {
             h = ::lean::hash(h, i);
         return h;
     }
+    void write(serializer & s) const {
+        write_list(s, m_params);
+    }
+    void read(deserializer & d) {
+        m_params = read_list<unsigned>(d);
+    }
 };
 
-class unsigned_params_attribute : public typed_attribute<unsigned_params_attribute_data> {
-    typedef unsigned_params_attribute_data data;
-
-    virtual void write_entry_typed(serializer & s, data const & data) const override {
-        write_list(s, data.m_params);
-    }
-    virtual data read_entry_typed(deserializer & d) const override {
-        return { read_list<unsigned>(d) };
-    }
-public:
-    unsigned_params_attribute(char const * id, char const * descr) : typed_attribute(id, descr) {}
-};
+template class typed_attribute<unsigned_params_attribute_data>;
+typedef typed_attribute<unsigned_params_attribute_data> unsigned_params_attribute;
 
 void register_attribute(attribute_ptr);
 
@@ -118,15 +134,10 @@ void register_attribute(Attribute attr) {
     register_attribute(attribute_ptr(new Attribute(attr)));
 }
 
-typedef std::function<environment(environment const &, io_state const &, name const &,
-                                  bool)> set_no_params_attribute_proc;
-typedef std::function<environment(environment const &, io_state const &, name const &,
-                                  unsigned, bool)> set_prio_attribute_proc;
-
-// legacy/convenience(?) register functions
-void register_no_params_attribute(char const * attr, char const * descr, set_no_params_attribute_proc const & on_set);
+// legacy register functions
+void register_no_params_attribute(char const * attr, char const * descr, basic_attribute::on_set_proc const & on_set);
 void register_no_params_attribute(char const * attr, char const * descr);
-void register_prio_attribute(char const * attr, char const * descr, set_prio_attribute_proc const & on_set);
+void register_prio_attribute(char const * attr, char const * descr, prio_attribute::on_set_proc const & on_set);
 void register_prio_attribute(char const * attr, char const * descr);
 void register_unsigned_params_attribute(char const *attr, char const *descr);
 
