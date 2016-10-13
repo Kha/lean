@@ -303,7 +303,6 @@ enabled and disabled respectively.")
   (when lean-flycheck-use
     (lean-flycheck-turn-on)
     (setq-local flycheck-disabled-checkers '())
-    (add-hook 'flycheck-after-syntax-check-hook 'lean-flycheck-delete-temporaries nil t))
   ;; Draw a vertical line for rule-column
   (when (and lean-rule-column
              lean-show-rule-column-method)
