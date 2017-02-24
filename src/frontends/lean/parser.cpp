@@ -2435,7 +2435,7 @@ bool parse_commands(environment & env, io_state & ios, char const * fname) {
 
     auto mod = mod_mgr.get_module(fname);
     env = mod->get_produced_env();
-    return true; // TODO(gabriel): reuse logic from lean.cpp
+    return get(has_errors(lt.get_root()));
 }
 
 void initialize_parser() {
