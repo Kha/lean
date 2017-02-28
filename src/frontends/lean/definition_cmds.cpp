@@ -643,7 +643,7 @@ static expr elaborate_proof(
         return inline_new_defs(decl_env, elab.env(), local_pp_name(fn), val);
     } catch (exception & ex) {
         /* Remark: we need the catch to be able to produce correct line information */
-        message_builder error_msg(&pos_provider, tc, decl_env, get_global_ios(),
+        message_builder error_msg(tc, decl_env, get_global_ios(),
                                   pos_provider.get_file_name(), pos_provider.get_some_pos(),
                                   ERROR);
         error_msg.set_exception(ex);
@@ -689,7 +689,7 @@ static void check_example(environment const & decl_env, options const & opts,
         check_noncomputable(false, new_env, decl_name, def.get_name(), modifiers.m_is_noncomputable,
                                  pos_provider.get_file_name(), pos_provider.get_some_pos());
     } catch (exception & ex) {
-        message_builder error_msg(&pos_provider, tc, decl_env, get_global_ios(),
+        message_builder error_msg(tc, decl_env, get_global_ios(),
                                   pos_provider.get_file_name(), pos_provider.get_some_pos(),
                                   ERROR);
         error_msg.set_exception(ex);
