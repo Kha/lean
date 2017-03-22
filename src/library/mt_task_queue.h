@@ -31,6 +31,8 @@ class mt_task_queue : public task_queue {
         gtask m_current_task;
     };
     std::vector<std::shared_ptr<worker_info>> m_workers;
+    bool m_reuse_threads;
+    void spawn_worker_thread(std::shared_ptr<worker_info> worker);
     void spawn_worker();
 
     unsigned m_sleeping_workers = 0;
@@ -68,7 +70,7 @@ class mt_task_queue : public task_queue {
     unsigned get_default_prio();
 
 public:
-    mt_task_queue(unsigned num_workers);
+    mt_task_queue(unsigned num_workers, bool reuse_threads = true);
     ~mt_task_queue();
 
     void wait_for_finish(gtask const & t) override;

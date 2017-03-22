@@ -31,7 +31,8 @@ struct scoped_add {
     }
 };
 
-mt_task_queue::mt_task_queue(unsigned num_workers) : m_required_workers(num_workers) {}
+mt_task_queue::mt_task_queue(unsigned num_workers, bool reuse_threads) : m_required_workers(num_workers),
+                                                                         m_reuse_threads(reuse_threads) {}
 
 mt_task_queue::~mt_task_queue() {
     unique_lock<mutex> lock(m_mutex);
@@ -70,15 +71,12 @@ void mt_task_queue::notify_queue_changed() {
 
 constexpr chrono::milliseconds g_worker_max_idle_time = chrono::milliseconds(1000);
 
-void mt_task_queue::spawn_worker() {
-    lean_always_assert(!m_shutting_down);
-    auto this_worker = std::make_shared<worker_info>();
-    m_workers.push_back(this_worker);
-    m_required_workers--;
+void mt_task_queue::spawn_worker_thread(std::shared_ptr<worker_info> this_worker) {
     this_worker->m_thread.reset(new lthread([this, this_worker]() {
         save_stack_info(false);
 
         unique_lock<mutex> lock(m_mutex);
+        bool respawn = false;
         while (true) {
             if (m_shutting_down) {
                 break;
@@ -120,6 +118,11 @@ void mt_task_queue::spawn_worker() {
             handle_finished(t);
 
             notify_queue_changed();
+
+            if (!m_reuse_threads) {
+                respawn = true;
+                break;
+            }
         }
 
         // We need to run the finalizers while the lock is held,
@@ -128,10 +131,22 @@ void mt_task_queue::spawn_worker() {
         run_thread_finalizers();
         run_post_thread_finalizers();
 
-        m_workers.erase(std::find(m_workers.begin(), m_workers.end(), this_worker));
-        m_required_workers++;
-        m_shut_down_cv.notify_all();
+        if (respawn) {
+            spawn_worker_thread(this_worker);
+        } else {
+            m_workers.erase(std::find(m_workers.begin(), m_workers.end(), this_worker));
+            m_required_workers++;
+            m_shut_down_cv.notify_all();
+        }
     }));
+}
+
+void mt_task_queue::spawn_worker() {
+    lean_always_assert(!m_shutting_down);
+    auto this_worker = std::make_shared<worker_info>();
+    m_workers.push_back(this_worker);
+    m_required_workers--;
+    spawn_worker_thread(this_worker);
 }
 
 void mt_task_queue::handle_finished(gtask const & t) {

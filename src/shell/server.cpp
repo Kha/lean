@@ -293,7 +293,9 @@ server::server(unsigned num_threads, environment const & initial_env, io_state c
     if (num_threads == 0) {
         m_tq.reset(new st_task_queue);
     } else {
-        m_tq.reset(new mt_task_queue(num_threads));
+        // TODO: option
+        bool reuse_threads = true;
+        m_tq.reset(new mt_task_queue(num_threads, reuse_threads));
     }
 #else
     m_tq.reset(new st_task_queue());
