@@ -124,10 +124,18 @@ ENDFOREACH(T)
 
 # LEAN RUN TESTS
 file(GLOB LEANRUNTESTS "${LEAN_SOURCE_DIR}/../tests/lean/run/*.lean")
-add_test(NAME leanruntest_all
-         WORKING_DIRECTORY "${LEAN_SOURCE_DIR}/../tests/lean/run"
-         COMMAND bash "./test_all.sh" "${CMAKE_CURRENT_BINARY_DIR}/lean")
-set_tests_properties(leanruntest_all PROPERTIES FIXTURES_REQUIRED AllFlag)
+add_test(NAME leanruntest_clear_all_files
+        WORKING_DIRECTORY "${LEAN_SOURCE_DIR}/../tests/lean/run"
+        COMMAND bash -c "rm *.test_suite.out *.status || true")
+set_tests_properties(leanruntest_clear_all_files PROPERTIES FIXTURES_SETUP AllFiles)
+
+if(NOT "${CMAKE_VERSION}" VERSION_LESS "3.7")
+  file(GLOB LEANRUNTESTS "${LEAN_SOURCE_DIR}/../tests/lean/run/*.lean")
+  add_test(NAME leanruntest_all
+          WORKING_DIRECTORY "${LEAN_SOURCE_DIR}/../tests/lean/run"
+          COMMAND bash "./test_all.sh" "${CMAKE_CURRENT_BINARY_DIR}/lean")
+  set_tests_properties(leanruntest_all PROPERTIES FIXTURES_REQUIRED AllFiles)
+endif()
 
 FOREACH(T ${LEANRUNTESTS})
   if(NOT T MATCHES "\\.#")
@@ -136,14 +144,9 @@ FOREACH(T ${LEANRUNTESTS})
              WORKING_DIRECTORY "${LEAN_SOURCE_DIR}/../tests/lean/run"
              COMMAND bash "./test_single.sh" "${CMAKE_CURRENT_BINARY_DIR}/lean" ${T_NAME})
     set_tests_properties("leanruntest_${T_NAME}" PROPERTIES DEPENDS leanruntest_all
-                                                            FIXTURES_REQUIRED AllFlag)
+                                                            FIXTURES_REQUIRED AllFiles)
   endif()
 ENDFOREACH(T)
-
-add_test(NAME leanruntest_clear_all_flag
-         WORKING_DIRECTORY "${LEAN_SOURCE_DIR}/../tests/lean/run"
-         COMMAND bash -c "rm all || true")
-set_tests_properties(leanruntest_clear_all_flag PROPERTIES FIXTURES_CLEANUP AllFlag)
 
 # LEAN FAIL TESTS
 file(GLOB LEANRUNTESTS "${LEAN_SOURCE_DIR}/../tests/lean/fail/*.lean")

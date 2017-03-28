@@ -6,6 +6,4 @@ fi
 ulimit -s 8192
 LEAN=$1
 export LEAN_PATH=../../../library:.
-if "$LEAN" *.lean; then
-    touch all
-fi
+"$LEAN" --test-suite *.lean
