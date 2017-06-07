@@ -30,7 +30,7 @@ matrix:
 
    - os: linux
      env:
-       CMAKE_CXX_COMPILER=$HOME/clang++
+       CMAKE_CXX_COMPILER=clang++
        CMAKE_BUILD_TYPE=Release
        TCMALLOC=ON
 
@@ -76,7 +76,7 @@ matrix:
 
    - os: linux
      env:
-       CMAKE_CXX_COMPILER=./clang++
+       CMAKE_CXX_COMPILER=clang++
        CMAKE_BUILD_TYPE=Debug
        LEAN_EXTRA_MAKE_OPTS=-t0
        TCMALLOC=ON
@@ -97,7 +97,7 @@ matrix:
 
    - os: osx
      env:
-       CMAKE_CXX_COMPILER=./g++
+       CMAKE_CXX_COMPILER=$HOME/g++
        CMAKE_BUILD_TYPE=Debug
 
 before_install:
@@ -113,6 +113,7 @@ script:
   - cd build
   - ln -s /usr/bin/ccache $HOME/g++
   - ln -s /usr/bin/ccache $HOME/clang++
+  - export PATH="$HOME:$PATH"
   - if [[ $TESTCOV != ON ]]; then TESTCOV=OFF; fi
   - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
   - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
