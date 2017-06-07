@@ -109,10 +109,10 @@ before_install:
     fi
 
 script:
-  - ln -s /usr/bin/ccache g++
-  - ln -s /usr/bin/ccache clang++
   - mkdir -p build
   - cd build
+  - ln -s /usr/bin/ccache g++
+  - ln -s /usr/bin/ccache clang++
   - if [[ $TESTCOV != ON ]]; then TESTCOV=OFF; fi
   - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
   - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
