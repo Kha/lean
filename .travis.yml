@@ -30,7 +30,7 @@ matrix:
 
    - os: linux
      env:
-       CMAKE_CXX_COMPILER=./clang++
+       CMAKE_CXX_COMPILER=$HOME/clang++
        CMAKE_BUILD_TYPE=Release
        TCMALLOC=ON
 
@@ -89,7 +89,7 @@ matrix:
 
    - os: osx
      env:
-       CMAKE_CXX_COMPILER=./clang++
+       CMAKE_CXX_COMPILER=$HOME/clang++
        CMAKE_BUILD_TYPE=Release
        TARGET=build/lean-3.1.1-darwin.zip
        UPLOAD=ON
@@ -111,8 +111,8 @@ before_install:
 script:
   - mkdir -p build
   - cd build
-  - ln -s /usr/bin/ccache g++
-  - ln -s /usr/bin/ccache clang++
+  - ln -s /usr/bin/ccache $HOME/g++
+  - ln -s /usr/bin/ccache $HOME/clang++
   - if [[ $TESTCOV != ON ]]; then TESTCOV=OFF; fi
   - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
   - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
