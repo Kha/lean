@@ -1,6 +1,6 @@
 language: cpp
 sudo: true
-cache: apt
+cache: ccache
 dist: trusty
 addons:
   apt:
@@ -30,7 +30,7 @@ matrix:
 
    - os: linux
      env:
-       CMAKE_CXX_COMPILER=clang++-3.4
+       CMAKE_CXX_COMPILER=./clang++
        CMAKE_BUILD_TYPE=Release
        TCMALLOC=ON
 
@@ -76,7 +76,7 @@ matrix:
 
    - os: linux
      env:
-       CMAKE_CXX_COMPILER=clang++-3.4
+       CMAKE_CXX_COMPILER=./clang++
        CMAKE_BUILD_TYPE=Debug
        LEAN_EXTRA_MAKE_OPTS=-t0
        TCMALLOC=ON
@@ -89,7 +89,7 @@ matrix:
 
    - os: osx
      env:
-       CMAKE_CXX_COMPILER=clang++
+       CMAKE_CXX_COMPILER=./clang++
        CMAKE_BUILD_TYPE=Release
        TARGET=build/lean-@LEAN_VERSION_MAJOR@.@LEAN_VERSION_MINOR@.@LEAN_VERSION_PATCH@-darwin.zip
        UPLOAD=ON
@@ -97,17 +97,20 @@ matrix:
 
    - os: osx
      env:
-       CMAKE_CXX_COMPILER=g++
+       CMAKE_CXX_COMPILER=./g++
        CMAKE_BUILD_TYPE=Debug
 
 before_install:
   - if [[ $TRAVIS_OS_NAME == osx ]]; then
       brew update &&
       brew install gcc &&
-      brew install gmp;
+      brew install gmp &&
+      brew install ccache;
     fi
 
 script:
+  - ln -s /usr/bin/ccache g++
+  - ln -s /usr/bin/ccache clang++
   - mkdir -p build
   - cd build
   - if [[ $TESTCOV != ON ]]; then TESTCOV=OFF; fi
@@ -122,7 +125,9 @@ script:
           -DSTATIC=$STATIC
           -DLEAN_EXTRA_MAKE_OPTS=$LEAN_EXTRA_MAKE_OPTS
           ../src || exit
+  - ccache -z
   - make -j2 || exit
+  - ccache -s
   - if [[ $TEST != OFF ]]; then yes "A" | ctest -j2 --output-on-failure; fi
   - if [[ $PACKAGE == TRUE ]]; then cpack; make package; fi
   - if [[ $TEST_LEANPKG_REGISTRY == ON ]]; then ../script/test_registry.py; fi
