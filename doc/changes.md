@@ -186,9 +186,12 @@ master branch (aka work in progress branch)
 
 * `by_cases p with h` ==> `by_cases h : p`
 
+- The monad laws have been separated into new type classes `lawful_{functor,applicative,monad}`.
+
 *API name changes*
 
 - `monad.{monad_transformer,has_monad_lift(_t)}` ~> `{monad_transformer,has_monad_lift(_t)}`
+- `monad.map_comp` ~> `comp_map`
 
 v3.3.0 (14 September 2017)
 -------------
