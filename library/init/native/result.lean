@@ -6,6 +6,7 @@ Authors: Jared Roesch
 prelude
 
 import init.meta.interactive
+import init.category.lawful
 
 namespace native
 
@@ -22,7 +23,7 @@ def result.and_then {E T U : Type} : result E T → (T → result E U) → resul
 | (result.ok t) f := f t
 
 local attribute [simp] result.and_then
-instance result_monad (E : Type) : monad (result E) :=
+instance (E : Type) : lawful_monad (result E) :=
 {pure := @result.ok E, bind := @result.and_then E,
  id_map := by intros; cases x; simp; refl,
  pure_bind := by intros; apply rfl,
@@ -31,13 +32,13 @@ instance result_monad (E : Type) : monad (result E) :=
 inductive resultT (M : Type → Type) (E : Type) (A : Type) : Type
 | run : M (result E A) → resultT
 
-section resultT
+namespace resultT
   variable {M : Type → Type}
 
-  def resultT.pure [monad : monad M] {E A : Type} (x : A) : resultT M E A :=
+  protected def pure [monad : monad M] {E A : Type} (x : A) : resultT M E A :=
     resultT.run $ pure (result.ok x)
 
-  def resultT.and_then [monad : monad M] {E A B : Type} : resultT M E A → (A → resultT M E B) → resultT M E B
+  protected def and_then [monad : monad M] {E A B : Type} : resultT M E A → (A → resultT M E B) → resultT M E B
   | (resultT.run action) f := resultT.run (do
   res_a ← action,
   -- a little ugly with this match
@@ -46,14 +47,17 @@ section resultT
   | result.ok a := let (resultT.run actionB) := f a in actionB
   end)
 
-  local attribute [simp] resultT.and_then monad.bind_pure monad.pure_bind
+  local attribute [simp] resultT.and_then bind_pure pure_bind
 
-  instance resultT_monad [m : monad M] (E : Type) : monad (resultT M E) :=
-  {pure := @resultT.pure M m E, bind := @resultT.and_then M m E,
+  instance [m : monad M] (E : Type) : monad (resultT M E) :=
+  {pure := @resultT.pure M m E, bind := @resultT.and_then M m E}
+
+  instance [m : lawful_monad M] (E : Type) : lawful_monad (resultT M E) :=
+  {pure := @resultT.pure M _ E, bind := @resultT.and_then M _ E,
    id_map := begin
      intros, cases x,
      simp [function.comp],
-     have : @resultT.and_then._match_1 _ m E α _ resultT.pure = pure,
+     have : @resultT.and_then._match_1 M _ E α _ resultT.pure = pure,
      { funext x,
        cases x; simp [resultT.pure] },
      simp [this]
@@ -67,7 +71,7 @@ section resultT
    bind_assoc := begin
      intros,
      cases x, simp,
-     apply congr_arg, rw [monad.bind_assoc],
+     apply congr_arg, rw [bind_assoc],
      apply congr_arg, funext,
      cases x with e a; simp,
      { cases f a, refl },
