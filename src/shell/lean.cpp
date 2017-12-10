@@ -229,6 +229,7 @@ class progress_message_stream {
     mutex m_mutex;
     bool m_showing_task = false;
     std::ostream & m_out;
+    bool m_out_is_tty;
     bool m_use_json;
     log_tree::node m_lt;
 
@@ -238,14 +239,19 @@ class progress_message_stream {
 
     void clear_shown_task() {
         if (m_showing_task) {
-            m_out << "\33[2K\r";
+            if (m_out_is_tty) {
+                m_out << "\33[2K\r";
+            } else {
+                m_out << "\n";
+            }
             m_showing_task = false;
         }
     }
 
 public:
-    progress_message_stream(std::ostream & out, bool use_json, bool show_progress, log_tree::node const & lt) :
-            m_out(out), m_use_json(use_json), m_lt(lt), m_show_progress(show_progress) {
+    progress_message_stream(std::ostream & out, bool out_is_tty,
+                            bool use_json, bool show_progress, log_tree::node const & lt) :
+            m_out(out), m_out_is_tty(out_is_tty), m_use_json(use_json), m_lt(lt), m_show_progress(show_progress) {
 #if defined(LEAN_MULTI_THREAD)
         if (show_progress) {
             m_timer.reset(new single_timer);
@@ -531,7 +537,7 @@ int main(int argc, char ** argv) {
 
     log_tree lt;
 
-    progress_message_stream msg_stream(std::cout, json_output, make_mode, lt.get_root());
+    progress_message_stream msg_stream(std::cout, isatty(STDOUT_FILENO) != 0, json_output, make_mode, lt.get_root());
     if (json_output) ios.set_regular_channel(ios.get_diagnostic_channel_ptr());
 
     if (!test_suite)
