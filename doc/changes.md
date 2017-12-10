@@ -72,6 +72,9 @@ master branch (aka work in progress branch)
   hide is_true
   ```
 
+- do notation now uses the top-level, overloadable `bind` function instead of `has_bind.bind`, 
+  allowing binds with different type signatures
+
 *Changes*
 
 * Replace `inout` modifier in type class declarations with `out_param` modifier.

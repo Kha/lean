@@ -10,21 +10,29 @@ open list
 
 universes u v
 
-local attribute [simp] join ret
+local attribute [simp] join list.ret
+
+instance : monad list :=
+{ pure := @list.ret, map := @list.map, bind := @list.bind }
+
+namespace list
+variables {α β : Type u}
+@[simp] lemma nil_bind (f : α → list β) : [] >>= f = [] :=
+by simp [join, bind, list.bind]
+
+@[simp] lemma cons_bind (x xs) (f : α → list β) : (x :: xs) >>= f = f x ++ (xs >>= f) :=
+by simp [join, bind, list.bind]
+
+@[simp] lemma append_bind (xs ys : list α) (f : α → list β) : (xs ++ ys) >>= f = (xs >>= f) ++ (ys >>= f) :=
+by induction xs; [refl, simp *]
+end list
 
 instance : lawful_monad list :=
-{pure := @list.ret, bind := @list.bind,
- id_map := begin
-   intros _ xs, induction xs with x xs ih,
-   { refl },
-   { dsimp [function.comp] at ih, dsimp [function.comp], simp [*] }
- end,
- pure_bind := by simp_intros,
- bind_assoc := begin
-   intros _ _ _ xs _ _, induction xs,
-   { refl },
-   { simp [*] }
- end}
+{ bind_pure_comp_eq_map := by intros; induction x; simp [*, has_map.map, has_pure.pure, function.comp] at *,
+  id_map := @list.map_id,
+  pure_bind := by intros; simp [has_pure.pure],
+  bind_assoc := by intros; induction x; simp *,
+  ..list.monad }
 
 instance : alternative list :=
 { failure := @list.nil,
