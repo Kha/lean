@@ -5,7 +5,7 @@ attribute [norm] function.comp map_bind_lemma
 
 example : nat.succ <$> [1, 2] = [2, 3] :=
 begin
-  simp with norm,
+  simp [-list.cons_bind] with norm,
   guard_target [1, 2] >>= (λ x, pure (nat.succ x)) = [2, 3],
-  simp [has_bind.bind, pure, has_pure.pure, list.ret]
+  simp [pure, list.ret]
 end
