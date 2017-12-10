@@ -3037,7 +3037,7 @@ expr elaborator::visit_structure_instance(expr const & e, optional<expr> const &
                 } else if (it != fnames.end()) {
                     /* Explicitly passed field */
                     used[it - fnames.begin()] = true;
-                    c_arg = mk_metavar(d, ref);
+                    c_arg = mk_metavar(consume_auto_opt_param(d), ref);
                     field2mvar.insert(S_fname, c_arg);
                     mvar2field.insert(mlocal_name(c_arg), S_fname);
                 } else if (auto p = is_subobject_field(m_env, nested_S_name, S_fname)) {
