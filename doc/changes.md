@@ -133,6 +133,9 @@ master branch (aka work in progress branch)
   value of a superclass. This change eliminates the need for most `..` source specifiers
   in instance declarations.
 
+- do notation now uses the top-level, overloadable `bind` function instead of `has_bind.bind`, 
+  allowing binds with different type signatures
+
 *Changes*
 
 * Command `variable [io.interface]` is not needed anymore to use the `io` monad.
