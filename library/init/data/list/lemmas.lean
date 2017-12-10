@@ -70,17 +70,6 @@ by induction l; simp [*]
 @[simp] lemma length_map (f : α → β) (l : list α) : length (map f l) = length l :=
 by induction l; simp [*]
 
-/- bind -/
-
-@[simp] lemma nil_bind (f : α → list β) : bind [] f = [] :=
-by simp [join, bind]
-
-@[simp] lemma cons_bind (x xs) (f : α → list β) : bind (x :: xs) f = f x ++ bind xs f :=
-by simp [join, bind]
-
-@[simp] lemma append_bind (xs ys) (f : α → list β) : bind (xs ++ ys) f = bind xs f ++ bind ys f :=
-by induction xs; [refl, simp [*, cons_bind]]
-
 /- mem -/
 
 @[simp] lemma mem_nil_iff (a : α) : a ∈ ([] : list α) ↔ false :=

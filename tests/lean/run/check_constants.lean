@@ -87,7 +87,6 @@ run_cmd script_check_id `has_add
 run_cmd script_check_id `has_add.add
 run_cmd script_check_id `andthen
 run_cmd script_check_id `has_bind.and_then
-run_cmd script_check_id `has_bind.bind
 run_cmd script_check_id `has_bind.seq
 run_cmd script_check_id `has_div
 run_cmd script_check_id `has_div.div
