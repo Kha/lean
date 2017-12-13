@@ -32,10 +32,10 @@ meta def trace_anf (s : string) : anf_monad unit :=
   trace s (return ())
 
 private meta def let_bind (n : name) (ty : expr) (e : expr) : anf_monad unit := do
-  scopes ← state.read,
+  scopes ← get,
   match scopes with
   | ([], _) := return ()
-  | ((s :: ss), count) := state.write $ (((n, ty, e) :: s) :: ss, count)
+  | ((s :: ss), count) := put $ (((n, ty, e) :: s) :: ss, count)
   end
 
 private meta def mk_let : list binding → expr → expr
@@ -44,25 +44,25 @@ private meta def mk_let : list binding → expr → expr
   mk_let es (expr.elet n ty val (expr.abstract body (mk_local n)))
 
 private meta def mk_let_in_current_scope (body : expr) : anf_monad expr := do
-  (scopes, _) ← state.read,
+  (scopes, _) ← get,
   match scopes with
   | [] := pure $ body
   | (top :: _) := return $ mk_let top body
   end
 
 private meta def enter_scope (action : anf_monad expr) : anf_monad expr := do
-  (scopes, count) ← state.read,
-  state.write ([] :: scopes, count),
+  (scopes, count) ← get,
+  put ([] :: scopes, count),
   result ← action,
   bound_result ← mk_let_in_current_scope result,
-  state.write (scopes, count),
+  put (scopes, count),
   return bound_result
 
 private meta def fresh_name : anf_monad name := do
-  (ss, count) ← state.read,
+  (ss, count) ← get,
   -- need to replace this with unique prefix as per our earlier conversation
   n ← pure $ name.mk_numeral (unsigned.of_nat' count) `_anf_,
-  state.write (ss, count + 1),
+  put (ss, count + 1),
   return n
 
 -- Hoist a set of expressions above the result of the callback
