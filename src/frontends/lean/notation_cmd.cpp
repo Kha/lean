@@ -10,6 +10,7 @@ Author: Leonardo de Moura
 #include "util/sstream.h"
 #include "util/utf8.h"
 #include "kernel/abstract.h"
+#include "kernel/instantiate.h"
 #include "kernel/replace_fn.h"
 #include "library/scoped_ext.h"
 #include "library/explicit.h"
@@ -237,16 +238,20 @@ static auto parse_mixfix_notation(parser & p, mixfix_kind k, bool overload, nota
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
             return mk_pair(notation_entry(false, to_list(transition(tks, mk_expr_action(*prec), pp_tk)),
-                                          mk_app(f, Var(1), Var(0)), overload, priority, grp, parse_only), new_token);
+                                          head_beta_reduce(mk_app(f, Var(1), Var(0))), overload, priority,
+                                          grp, parse_only), new_token);
         case mixfix_kind::infixr:
             return mk_pair(notation_entry(false, to_list(transition(tks, mk_expr_action(*prec), pp_tk)),
-                                          mk_app(f, Var(1), Var(0)), overload, priority, grp, parse_only), new_token);
+                                          head_beta_reduce(mk_app(f, Var(1), Var(0))), overload, priority,
+                                          grp, parse_only), new_token);
         case mixfix_kind::postfix:
             return mk_pair(notation_entry(false, to_list(transition(tks, mk_skip_action(), pp_tk)),
-                                          mk_app(f, Var(0)), overload, priority, grp, parse_only), new_token);
+                                          head_beta_reduce(mk_app(f, Var(0))), overload, priority,
+                                          grp, parse_only), new_token);
         case mixfix_kind::prefix:
             return mk_pair(notation_entry(true, to_list(transition(tks, mk_expr_action(*prec), pp_tk)),
-                                          mk_app(f, Var(0)), overload, priority, grp, parse_only), new_token);
+                                          head_beta_reduce(mk_app(f, Var(0))), overload, priority,
+                                          grp, parse_only), new_token);
         }
     }
     lean_unreachable(); // LCOV_EXCL_LINE
