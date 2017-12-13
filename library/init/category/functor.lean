@@ -14,6 +14,6 @@ class has_map (f : Type u → Type v) : Type (max (u+1) v) :=
 
 infixr ` <$> `:100 := has_map.map
 infixr ` <$ `:100  := has_map.map_const
-infixr ` $> `:100  := λ α a b, b <$ a
+infixr [parsing_only] ` $> `:100  := λ a b, b <$ a
 
 class functor (f : Type u → Type v) extends has_map f
