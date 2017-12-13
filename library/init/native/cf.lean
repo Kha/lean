@@ -29,7 +29,7 @@ namespace cf
   state cf_state
 
 meta def when_debug (action : cf_monad unit) : cf_monad unit := do
-  (config, _) ← state.read,
+  (config, _) ← get,
   if config.debug
   then action
   else return ()
@@ -41,10 +41,10 @@ meta def trace_cf (s : string) : cf_monad unit :=
   when_debug (trace s (return ()))
 
 meta def fresh_name : cf_monad name := do
-  (config, count) ← state.read,
+  (config, count) ← get,
   -- need to replace this with unique prefix as per our earlier conversation
   n ← pure $ name.mk_numeral (unsigned.of_nat' count) `_anf_,
-  state.write (config, count + 1),
+  put (config, count + 1),
   return n
 
 private meta def cf_case (action : expr → cf_monad expr) (e : expr) : cf_monad expr := do

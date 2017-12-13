@@ -54,7 +54,7 @@ meta def lift {A} (action : state ir_compiler_state A) : ir_compiler A :=
 ⟨(fun (a : A), native.result.ok a) <$> action⟩
 
 meta def trace_ir (s : string) : ir_compiler unit := do
-  (conf, map, counter) ← lift $ state.read,
+  (conf, map, counter) ← lift $ get,
   if config.debug conf
   then trace s (return ())
   else return ()
@@ -91,9 +91,9 @@ private meta def take_arguments' : expr → list name → (list name × expr)
 | e' ns := (ns, e')
 
 meta def fresh_name : ir_compiler name := do
-  (conf, map, counter) ← lift state.read,
+  (conf, map, counter) ← lift get,
   let fresh := name.mk_numeral (unsigned.of_nat' counter) `native._ir_compiler_,
-  lift $ state.write (conf, map, counter + 1),
+  lift $ put (conf, map, counter + 1),
   return fresh
 
 meta def take_arguments (e : expr) : ir_compiler (list name × expr) :=
@@ -113,7 +113,7 @@ meta def mk_error {T} : string → ir_compiler T :=
   lift_result (native.result.err $ error.string s)
 
 meta def lookup_arity (n : name) : ir_compiler nat := do
-  (_, map, counter) ← lift state.read,
+  (_, map, counter) ← lift get,
   if n = `nat.cases_on
   then pure 2
   else
@@ -588,7 +588,7 @@ meta def unzip {A B} : list (A × B) → (list A × list B)
   in (x :: xs, y :: ys)
 
 meta def configuration : ir_compiler config := do
-  (conf, _, _) ← lift $ state.read,
+  (conf, _, _) ← lift $ get,
   pure conf
 
 meta def apply_pre_ir_passes (procs : list procedure) (conf : config) : list procedure :=
