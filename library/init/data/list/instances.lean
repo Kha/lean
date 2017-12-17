@@ -27,17 +27,17 @@ by simp [join, bind, list.bind]
 by induction xs; [refl, simp *]
 end list
 
-instance : lawful_monad list :=
-{ bind_pure_comp_eq_map := by intros; induction x; simp [*, has_map.map, has_pure.pure, function.comp] at *,
+instance : is_lawful_monad list :=
+{ bind_pure_comp_eq_map := by intros; induction x; simp [*, has_map.map, pure, has_pure.pure, function.comp] at *,
   id_map := @list.map_id,
-  pure_bind := by intros; simp [has_pure.pure],
+  pure_bind := by intros; simp [pure, has_pure.pure],
   bind_assoc := by intros; induction x; simp *,
   ..list.monad }
 
 instance : alternative list :=
 { failure := @list.nil,
   orelse  := @list.append,
-  ..list.lawful_monad }
+  ..list.monad }
 
 namespace list
 
