@@ -156,7 +156,7 @@ master branch (aka work in progress branch)
 
 * `by_cases p with h` ==> `by_cases h : p`
 
-- The monad laws have been separated into new type classes `lawful_{functor,applicative,monad}`.
+- The monad laws have been separated into new type classes `is_lawful_{functor,applicative,monad}`.
 
 *API name changes*
 

@@ -23,11 +23,13 @@ def result.and_then {E T U : Type} : result E T → (T → result E U) → resul
 | (result.ok t) f := f t
 
 local attribute [simp] result.and_then
-instance (E : Type) : lawful_monad (result E) :=
-{pure := @result.ok E, bind := @result.and_then E,
- id_map := by intros; cases x; simp; refl,
- pure_bind := by intros; apply rfl,
- bind_assoc := by intros; cases x; simp}
+instance (E : Type) : monad (result E) :=
+{ pure := @result.ok E, bind := @result.and_then E }
+
+instance (E : Type) : is_lawful_monad (result E) :=
+{ id_map := by intros; cases x; simp [has_map.map]; refl,
+  pure_bind := by intros; apply rfl,
+  bind_assoc := by intros; cases x; simp [has_map.map, bind] }
 
 inductive resultT (M : Type → Type) (E : Type) (A : Type) : Type
 | run : M (result E A) → resultT
@@ -52,30 +54,30 @@ namespace resultT
   instance [m : monad M] (E : Type) : monad (resultT M E) :=
   {pure := @resultT.pure M m E, bind := @resultT.and_then M m E}
 
-  instance [m : lawful_monad M] (E : Type) : lawful_monad (resultT M E) :=
-  {pure := @resultT.pure M _ E, bind := @resultT.and_then M _ E,
-   id_map := begin
-     intros, cases x,
-     simp [function.comp],
-     have : @resultT.and_then._match_1 M _ E α _ resultT.pure = pure,
-     { funext x,
-       cases x; simp [resultT.pure] },
-     simp [this]
-   end,
-   pure_bind := begin
-     intros,
-     simp [resultT.pure],
-     cases f x,
-     simp [resultT.and_then]
-   end,
-   bind_assoc := begin
-     intros,
-     cases x, simp,
-     apply congr_arg, rw [bind_assoc],
-     apply congr_arg, funext,
-     cases x with e a; simp,
-     { cases f a, refl },
-   end}
+  instance [monad M] [is_lawful_monad M] (E : Type) : is_lawful_monad (resultT M E) :=
+  { id_map := begin
+      intros, cases x,
+      rw resultT.monad,
+      simp [function.comp],
+      have : @resultT.and_then._match_1 M _ E α _ resultT.pure = pure,
+      { funext x,
+        cases x; simp [resultT.pure] },
+      simp [this]
+    end,
+    pure_bind := begin
+      intros,
+      simp [bind, pure, has_pure.pure, resultT.pure],
+      cases f x,
+      simp [resultT.and_then]
+    end,
+    bind_assoc := begin
+      intros,
+      cases x, simp [bind],
+      apply congr_arg, rw [bind_assoc],
+      apply congr_arg, funext,
+      cases x with e a; simp,
+      { cases f a, refl },
+    end }
 end resultT
 
 end native
