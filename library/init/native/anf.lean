@@ -31,10 +31,10 @@ open native
 meta def trace_anf (s : string) : anf_monad unit :=
   trace s (return ())
 
-private meta def let_bind (n : name) (ty : expr) (e : expr) : anf_monad unit := do
+private meta def let_bind (n : name) (ty : expr) (e : expr) : anf_monad punit := do
   scopes ← get,
   match scopes with
-  | ([], _) := return ()
+  | ([], _) := return punit.star
   | ((s :: ss), count) := put $ (((n, ty, e) :: s) :: ss, count)
   end
 
