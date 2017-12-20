@@ -863,12 +863,15 @@ environment single_definition_cmd_core(parser & p, decl_cmd_kind kind, cmd_meta 
     } catch (throwable & ex) {
         // Even though we catch exceptions during elaboration, there can still be other exceptions,
         // e.g. when adding a declaration to the environment.
-        try {
-            auto res = process(p.mk_sorry(header_pos, true));
+
+        // prefer elaboration error messages
+        if (!lt.get().has_entry_now(is_error_message))
             p.mk_message(header_pos, ERROR).set_exception(ex).report();
-            return res;
-        } catch (...) {}
-        throw;
+        try {
+            return process(p.mk_sorry(header_pos, true));
+        } catch (...) {
+            return env;
+        }
     }
 }
 
