@@ -68,22 +68,22 @@ meta def run {M E A} (res : native.resultT M E A) : M (native.result E A) :=
 meta def sequence_err : list (ir_compiler format) → ir_compiler (list format × list error)
 | [] := return ([], [])
 | (action :: remaining) :=
-    ⟨ fun s,
-       match (run (sequence_err remaining)) s with
+    ⟨⟨fun s,
+       match (run (sequence_err remaining)).run s with
        | (native.result.err e, s') := (native.result.err e, s)
        | (native.result.ok (res, errs), s') :=
-         match (run action) s' with
+         match (run action).run s' with
          | (native.result.err e, s'') := (native.result.ok (res, e :: errs), s'')
          | (native.result.ok v, s'') := (native.result.ok (v :: res, errs), s'')
          end
          end
-     ⟩
+     ⟩⟩
 
 -- meta lemma sequence_err_always_ok :
 --   forall xs v s s', sequence_err xs s = native.result.ok (v, s') := sorry
 
 meta def lift_result {A} (action : ir_result A) : ir_compiler A :=
-  ⟨fun s, (action, s)⟩
+  ⟨⟨fun s, (action, s)⟩⟩
 
 -- TODO: fix naming here
 private meta def take_arguments' : expr → list name → (list name × expr)
@@ -603,7 +603,7 @@ meta def driver (procs : list (name × expr)) : ir_compiler (list format × list
 meta def compile (conf : config) (procs : list (name × expr)) : format :=
   let arities := mk_arity_map procs in
   -- Put this in a combinator or something ...
-  match run (driver procs) (conf, arities, 0) with
+  match (run (driver procs)).run (conf, arities, 0) with
   | (native.result.err e, s) := error.to_string e
   | (native.result.ok (decls, errs), s) :=
     if list.length errs = 0

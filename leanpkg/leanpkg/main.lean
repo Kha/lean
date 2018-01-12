@@ -106,7 +106,7 @@ def fixup_git_version (dir : string) : ∀ (src : source), io source
 
 def add (dep : string) : io unit := do
 let dep := parse_add_dep dep,
-(_, assg) ← materialize "." dep assignment.empty,
+(_, assg) ← (materialize "." dep).run assignment.empty,
 some downloaded_path ← return (assg.find dep.name),
 manif ← manifest.from_file (downloaded_path ++ "/" ++ leanpkg_toml_fn),
 src ← fixup_git_version downloaded_path dep.src,
