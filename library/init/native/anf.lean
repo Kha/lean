@@ -125,7 +125,7 @@ private meta def init_state : anf_state :=
   ([], 0)
 
 private meta def anf_transform (conf : config) (e : expr) : expr :=
-  prod.fst $ (under_lambda fresh_name (enter_scope ∘ anf') e) init_state
+  prod.fst $ (under_lambda fresh_name (enter_scope ∘ anf') e).run init_state
 
 meta def anf : pass := {
   name := "anf",

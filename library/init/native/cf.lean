@@ -77,7 +77,7 @@ meta def init_state : config → cf_state :=
 end cf
 
 private meta def cf_transform (conf : config) (e : expr) : expr :=
-  prod.fst $ (under_lambda cf.fresh_name cf.cf' e) (cf.init_state conf)
+  prod.fst $ (under_lambda cf.fresh_name cf.cf' e).run (cf.init_state conf)
 
 meta def cf : pass := {
   name := "control_flow",
