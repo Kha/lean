@@ -3,7 +3,7 @@ state:
 n : ℕ
 ⊢ ∃ (v : ℕ),
     v =
-      let k : ℕ :=
-            (let k : ℕ := (let k : ℕ := (let k : ℕ := (let k : ℕ := n + n in k) + n in k) + n in k) + n in k) +
-              n
-      in k
+      (let k : ℕ :=
+             (let k : ℕ := (let k : ℕ := (let k : ℕ := (let k : ℕ := n + n in k) + n in k) + n in k) + n in k) +
+               n
+       in k)

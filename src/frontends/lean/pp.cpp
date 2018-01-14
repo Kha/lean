@@ -1397,7 +1397,7 @@ auto pretty_fn::pp_notation_child(expr const & e, unsigned lbp, unsigned rbp) ->
         }
     }
     result r = pp(e);
-    if (r.rbp() < lbp || r.lbp() <= rbp) {
+    if (r.rbp() < lbp || r.rbp() < rbp || r.lbp() <= rbp) {
         return result(paren(r.fmt()));
     } else {
         return r;
@@ -1460,7 +1460,7 @@ auto pretty_fn::pp_notation(notation_entry const & entry, buffer<optional<expr>>
                     result e_r   = pp_notation_child(e, token_lbp, a.rbp());
                     curr = tk_fmt + e_r.fmt();
                     if (last)
-                        last_rbp = std::min(a.rbp(), e_r.rbp());
+                        last_rbp = a.rbp();
                     break;
                 }
             case notation::action_kind::Exprs:
@@ -1564,7 +1564,7 @@ auto pretty_fn::pp_notation(notation_entry const & entry, buffer<optional<expr>>
                     result e_r   = pp_notation_child(e, token_lbp, a.rbp());
                     curr = tk_fmt + e_r.fmt();
                     if (last)
-                        last_rbp = std::min(a.rbp(), e_r.rbp());
+                        last_rbp = a.rbp();
                     break;
                 }
             case notation::action_kind::Ext:
