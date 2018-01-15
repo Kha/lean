@@ -3,10 +3,10 @@
 context:
 h : tactic unit,
 _example : true
-⊢ Type ?
+⊢ Type
 1207.lean:21:23: error: unknown identifier 'foo'
 1207.lean:21:23: error: don't know how to synthesize placeholder
 context:
-⊢ Type ?
+⊢ Type
 state:
 ⊢ false

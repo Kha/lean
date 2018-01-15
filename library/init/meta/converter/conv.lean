@@ -10,9 +10,7 @@ import init.meta.tactic init.meta.simp_tactic init.meta.interactive
 import init.meta.congr_lemma init.meta.match_tactic
 open tactic
 
-universe u
-
-meta def conv (α : Type u) :=
+meta def conv (α : Type) :=
 tactic α
 
 meta instance : monad conv :=
