@@ -1116,7 +1116,7 @@ void initialize_library_util() {
     g_and_intro      = new expr(mk_constant(get_and_intro_name()));
     g_and_elim_left  = new expr(mk_constant(get_and_elim_left_name()));
     g_and_elim_right = new expr(mk_constant(get_and_elim_right_name()));
-    g_tactic_unit    = new expr(mk_app(mk_constant(get_tactic_name(), {mk_level_zero()}), mk_constant(get_unit_name())));
+    g_tactic_unit    = new expr(mk_app(mk_constant(get_tactic_name()), mk_constant(get_unit_name())));
     initialize_nat();
     initialize_int();
     initialize_char();

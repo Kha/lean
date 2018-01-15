@@ -53,7 +53,7 @@ def monad_map' {α : Type u} (m m' : Type u → Type v) (n n' : Type u → Type 
 monad_map
 
 instance monad_functor_t_trans (m m' n n' o o') [monad_functor n n' o o'] [monad_functor_t m m' n n'] : monad_functor_t m m' o o' :=
-⟨λ α f, monad_functor.monad_map (λ α, (monad_map (λ α, f) : n α → n' α))⟩
+⟨λ α f, monad_functor.monad_map (λ α, (monad_map @f : n α → n' α))⟩
 
 instance monad_functor_t_refl (m m') : monad_functor_t m m' m m' :=
 ⟨λ α f, f⟩
