@@ -11,14 +11,14 @@ import init.meta.pexpr init.data.repr init.data.string.basic init.data.to_string
 
 universes u v
 
-meta inductive interaction_monad.result (state : Type) (α : Type u)
+meta inductive interaction_monad.result (state : Type) (α : Type)
 | success      : α → state → interaction_monad.result
 | exception {} : option (unit → format) → option pos → state → interaction_monad.result
 
 open interaction_monad.result
 
 section
-variables {state : Type} {α : Type u}
+variables {state : Type} {α : Type}
 variables [has_to_string α]
 
 meta def interaction_monad.result_to_string : result state α → string
@@ -30,17 +30,17 @@ meta instance interaction_monad.result_has_string : has_to_string (result state 
 ⟨interaction_monad.result_to_string⟩
 end
 
-meta def interaction_monad.result.clamp_pos {state : Type} {α : Type u} (line0 line col : ℕ) : result state α → result state α
+meta def interaction_monad.result.clamp_pos {state : Type} {α : Type} (line0 line col : ℕ) : result state α → result state α
 | (success a s)              := success a s
 | (exception msg (some p) s) := exception msg (some $ if p.line < line0 then ⟨line, col⟩ else p) s
 | (exception msg none s)     := exception msg (some ⟨line, col⟩) s
 
-@[reducible] meta def interaction_monad (state : Type) (α : Type u) :=
+@[reducible] meta def interaction_monad (state : Type) (α : Type) :=
 state → result state α
 
 section
 parameter {state : Type}
-variables {α : Type u} {β : Type v}
+variables {α : Type} {β : Type}
 local notation `m` := interaction_monad state
 
 
@@ -57,7 +57,7 @@ local notation `m` := interaction_monad state
 @[inline] meta def interaction_monad_return (a : α) : m α :=
 λ s, success a s
 
-meta def interaction_monad_orelse {α : Type u} (t₁ t₂ : m α) : m α :=
+meta def interaction_monad_orelse {α : Type} (t₁ t₂ : m α) : m α :=
 λ s, interaction_monad.result.cases_on (t₁ s)
   success
   (λ e₁ ref₁ s', interaction_monad.result.cases_on (t₂ s)
@@ -70,21 +70,21 @@ interaction_monad_bind t₁ (λ a, t₂)
 meta instance interaction_monad.monad : monad m :=
 {map := @interaction_monad_fmap, pure := @interaction_monad_return, bind := @interaction_monad_bind}
 
-meta def interaction_monad.mk_exception {α : Type u} {β : Type v} [has_to_format β] (msg : β) (ref : option expr) (s : state) : result state α :=
+meta def interaction_monad.mk_exception {α : Type} {β : Type u} [has_to_format β] (msg : β) (ref : option expr) (s : state) : result state α :=
 exception (some (λ _, to_fmt msg)) none s
 
-meta def interaction_monad.fail {α : Type u} {β : Type v} [has_to_format β] (msg : β) : m α :=
+meta def interaction_monad.fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : m α :=
 λ s, interaction_monad.mk_exception msg none s
 
-meta def interaction_monad.silent_fail {α : Type u} : m α :=
+meta def interaction_monad.silent_fail {α : Type} : m α :=
 λ s, exception none none s
 
-meta def interaction_monad.failed {α : Type u} : m α :=
+meta def interaction_monad.failed {α : Type} : m α :=
 interaction_monad.fail "failed"
 
 /- Alternative orelse operator that allows to select which exception should be used.
    The default is to use the first exception since the standard `orelse` uses the second. -/
-meta def interaction_monad.orelse' {α : Type u} (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
+meta def interaction_monad.orelse' {α : Type} (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
 λ s, interaction_monad.result.cases_on (t₁ s)
   success
   (λ e₁ ref₁ s₁', interaction_monad.result.cases_on (t₂ s)

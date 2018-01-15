@@ -33,13 +33,13 @@ def of_list : list α → lazy_list α
 | (h::t) := cons h (of_list t)
 end lazy_list
 
-meta def lazy_tactic (α : Type u) :=
+meta def lazy_tactic (α : Type) :=
 tactic_state → lazy_list (α × tactic_state)
 
 namespace lazy_tactic
 open lazy_list
 
-meta def of_tactic {α : Type u} (t : tactic α) : lazy_tactic α :=
+meta def of_tactic {α : Type} (t : tactic α) : lazy_tactic α :=
 λ s, match t s with
 | result.success a new_s    := lazy_list.singleton (a, new_s)
 | result.exception f e s := lazy_list.nil
