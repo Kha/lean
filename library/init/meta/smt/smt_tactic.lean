@@ -76,9 +76,6 @@ meta instance : has_monad_lift tactic smt_tactic :=
 meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 ⟨monad_lift⟩
 
-meta instance : monad_fail smt_tactic :=
-{ fail := λ α s, (tactic.fail (to_fmt s) : smt_tactic α), ..smt_tactic.monad }
-
 namespace smt_tactic
 open tactic (transparency)
 meta constant intros                     : smt_tactic unit

@@ -57,7 +57,7 @@ section
   protected def lift {α : Type u} (t : m α) : state_t σ m α :=
   ⟨λ s, do a ← t, return (a, s)⟩
 
-  instance has_monad_lift_lift (m) [monad m] : has_monad_lift m (state_t σ m) :=
+  instance (m) [monad m] : has_monad_lift m (state_t σ m) :=
   ⟨@state_t.lift σ m _⟩
 
   protected def map {σ m m'} [monad m] [monad m'] {α} (f : Π {α}, m α → m' α) : state_t σ m α → state_t σ m' α :=
