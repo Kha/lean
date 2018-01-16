@@ -9,7 +9,7 @@ import init.meta.smt.rsimp
 
 namespace smt_tactic
 meta def save_info (p : pos) : smt_tactic unit :=
-do (ss, ts) ← smt_tactic.read,
+do (ss, ts) ← smt_tactic.get,
    tactic.save_info_thunk p (λ _, smt_state.to_format ss ts)
 
 meta def skip : smt_tactic unit :=
@@ -22,7 +22,7 @@ meta def step {α : Type} (tac : smt_tactic α) : smt_tactic unit :=
 tac >> solve_goals
 
 meta def istep {α : Type} (line0 col0 line col : nat) (tac : smt_tactic α) : smt_tactic unit :=
-⟨λ ss ts, (@scope_trace _ line col (λ _, (tac >> solve_goals).run ss ts)).clamp_pos line0 line col⟩
+interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step tac))
 
 meta def execute (tac : smt_tactic unit) : tactic unit :=
 using_smt tac

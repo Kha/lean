@@ -10,7 +10,7 @@ import init.meta.interactive init.meta.converter.conv
 
 namespace conv
 meta def save_info (p : pos) : conv unit :=
-do s ← tactic.read,
+do s ← tactic.get,
    tactic.save_info_thunk p (λ _, s.to_format tt)
 
 meta def step {α : Type} (c : conv α) : conv unit :=
@@ -134,7 +134,7 @@ private meta def rw_core (rs : list rw_rule) (cfg : rewrite_cfg) : conv unit :=
 rs.mmap' $ λ r, do
  save_info r.pos,
  eq_lemmas ← get_rule_eqn_lemmas r,
- orelse'
+ monad_except.orelse'
    (do h ← to_expr' r.rule, rw_lhs h {symm := r.symm, ..cfg})
    (eq_lemmas.mfirst $ λ n, do e ← tactic.mk_const n, rw_lhs e {symm := r.symm, ..cfg})
    (eq_lemmas.empty)

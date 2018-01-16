@@ -36,7 +36,6 @@ struct interaction_monad {
     static bool is_state(vm_obj const & o);
     static State const & to_state(vm_obj const & o);
     static vm_obj to_obj(State const & s);
-    static bool is_silent_exception(vm_obj const & ex);
     static bool is_result_exception(vm_obj const & r);
     static vm_obj get_exception_message(vm_obj const & r);
     static vm_obj get_exception_pos(vm_obj const & r);
@@ -48,7 +47,6 @@ struct interaction_monad {
     static vm_obj mk_success(vm_obj const & a, State const & s);
     static vm_obj mk_success(State const & s);
     static vm_obj mk_exception(vm_obj const & fn, State const & s);
-    static vm_obj mk_silent_exception(State const & s);
     static vm_obj mk_exception(vm_obj const & fn, vm_obj const & pos, State const & s);
     static vm_obj mk_exception(throwable const & ex, State const & s);
     static vm_obj mk_exception(format const & fmt, State const & s);

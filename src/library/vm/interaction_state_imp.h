@@ -75,59 +75,61 @@ vm_obj interaction_monad<State>::to_obj(State const & s) {
 }
 
 template<typename State>
-bool interaction_monad<State>::is_silent_exception(vm_obj const & ex) {
-    return is_constructor(ex) && cidx(ex) == 1 && is_none(cfield(ex, 0));
-}
-
-template<typename State>
-vm_obj interaction_monad<State>::mk_success(vm_obj const & a, vm_obj const & s) {
-    lean_assert(is_state(s));
-    return mk_vm_constructor(0, a, s);
-}
-
-template<typename State>
 bool interaction_monad<State>::is_result_exception(vm_obj const & r) {
-    return is_constructor(r) && cidx(r) == 1;
+    // except.error _
+    return is_constructor(r) && cidx(r) == 0;
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::get_exception_message(vm_obj const & r) {
     lean_assert(is_result_exception(r));
-    return cfield(r, 0);
+    // except.error (interaction_monad_error.mk msg _ _)
+    return cfield(cfield(r, 0), 0);
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::get_exception_pos(vm_obj const & r) {
     lean_assert(is_result_exception(r));
-    return cfield(r, 1);
+    // except.error (interaction_monad_error.mk _ pos _)
+    return cfield(cfield(r, 0), 1);
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::get_exception_state(vm_obj const & r) {
     lean_assert(is_result_exception(r));
-    return cfield(r, 2);
+    // except.error (interaction_monad_error.mk _ _ s)
+    return cfield(cfield(r, 0), 2);
 }
 
 template<typename State>
 bool interaction_monad<State>::is_result_success(vm_obj const & r) {
-    return is_constructor(r) && cidx(r) == 0;
+    // except.ok _
+    return is_constructor(r) && cidx(r) == 1;
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::get_success_value(vm_obj const & r) {
     lean_assert(is_result_success(r));
-    return cfield(r, 0);
+    // except.ok (a, _)
+    return cfield(cfield(r, 0), 0);
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::get_success_state(vm_obj const & r) {
     lean_assert(is_result_success(r));
-    return cfield(r, 1);
+    // except.ok (_, s)
+    return cfield(cfield(r, 0), 1);
+}
+
+template<typename State>
+vm_obj interaction_monad<State>::mk_success(vm_obj const & a, vm_obj const & s) {
+    // except.ok (a, s)
+    return mk_vm_constructor(1, mk_vm_pair(a, s));
 }
 
 template<typename State>
 vm_obj interaction_monad<State>::mk_success(vm_obj const & a, State const & s) {
-    return mk_vm_constructor(0, a, to_obj(s));
+    return mk_success(a, to_obj(s));
 }
 
 template<typename State>
@@ -136,18 +138,14 @@ vm_obj interaction_monad<State>::mk_success(State const & s) {
 }
 
 template<typename State>
-vm_obj interaction_monad<State>::mk_exception(vm_obj const & fn, State const & s) {
-    return mk_vm_constructor(1, mk_vm_some(fn), mk_vm_none(), to_obj(s));
-}
-
-template<typename State>
-vm_obj interaction_monad<State>::mk_silent_exception(State const & s) {
-    return mk_vm_constructor(1, mk_vm_none(), mk_vm_none(), to_obj(s));
-}
-
-template<typename State>
 vm_obj interaction_monad<State>::mk_exception(vm_obj const & fn, vm_obj const & pos, State const & s) {
-    return mk_vm_constructor(1, mk_vm_some(fn), pos, to_obj(s));
+    // except.error (interaction_monad_error.mk fn pos s)
+    return mk_vm_constructor(0, mk_vm_constructor(0, fn, pos, to_obj(s)));
+}
+
+template<typename State>
+vm_obj interaction_monad<State>::mk_exception(vm_obj const & fn, State const & s) {
+    return mk_exception(fn, mk_vm_none(), s);
 }
 
 template<typename State>
@@ -211,24 +209,20 @@ auto interaction_monad<State>::is_success(vm_obj const & r) -> optional<State> {
 
 template<typename State>
 auto interaction_monad<State>::is_exception(vm_state & S, vm_obj const & ex) -> optional<exception_info> {
-    if (is_result_exception(ex) && !is_none(get_exception_message(ex))) {
-        vm_obj fmt = S.invoke(get_some_value(get_exception_message(ex)), mk_vm_unit());
-        optional<pos_info> p;
-        if (!is_none(get_exception_pos(ex))) {
-            auto vm_p = get_some_value(get_exception_pos(ex));
-            p = some(to_pos_info(vm_p));
-        }
-        return optional<exception_info>(to_format(fmt), p, to_state(get_exception_state(ex)));
-    } else {
+    if (!is_result_exception(ex))
         return {};
+    vm_obj fmt = S.invoke(get_exception_message(ex), mk_vm_unit());
+    optional<pos_info> p;
+    if (!is_none(get_exception_pos(ex))) {
+        auto vm_p = get_some_value(get_exception_pos(ex));
+        p = some(to_pos_info(vm_p));
     }
+    return optional<exception_info>(to_format(fmt), p, to_state(get_exception_state(ex)));
 }
 
 template<typename State>
 void interaction_monad<State>::evaluator::process_failure(vm_state & S, vm_obj const & r) {
     report_exception(S, r);
-    /* Do nothing if it is a silent failure */
-    lean_assert(is_silent_exception(r));
 }
 
 template<typename State>

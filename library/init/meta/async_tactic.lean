@@ -9,23 +9,18 @@ import init.meta.interactive
 
 namespace tactic
 
-private meta def report {α} (s : tactic_state) : option (unit → format) → α
-| (some fmt) := undefined_core $ format.to_string $ fmt () ++ format.line ++ to_fmt s
-| none       := undefined_core "silent failure"
+private meta def report {α} (s : tactic_state) (fmt : unit → format) : α :=
+undefined_core $ format.to_string $ fmt () ++ format.line ++ to_fmt s
 
 
 private meta def run_or_fail {α} (s : tactic_state) (tac : tactic α) : α :=
-match tac s with
-| (result.success a s) := a
-| (result.exception fmt _ s') := report s' fmt
+match tac.run s with
+| except.ok (a, _) := a
+| except.error e   := report e.state e.msg
 end
 
 meta def run_async {α : Type} (tac : tactic α) : tactic (task α) := do
-s ← read, return $ task.delay $ λ _,
-  match tac s with
-  | (result.success a s) := a
-  | (result.exception fmt _ s') := report s' fmt
-  end
+s ← get, return $ task.delay $ λ _, run_or_fail s tac
 
 meta def prove_goal_async (tac : tactic unit) : tactic unit := do
 ctx ← local_context, revert_lst ctx,

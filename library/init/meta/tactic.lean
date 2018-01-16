@@ -11,8 +11,6 @@ import init.meta.pexpr init.data.repr init.data.string.basic init.meta.interacti
 
 meta constant tactic_state : Type
 
-universes u v
-
 namespace tactic_state
 meta constant env         : tactic_state → environment
 /-- Format the given tactic state. If `target_lhs_only` is true and the target
@@ -37,67 +35,44 @@ meta instance : has_to_string tactic_state :=
 ⟨λ s, (to_fmt s).to_string s.get_options⟩
 
 @[reducible] meta def tactic := interaction_monad tactic_state
-@[reducible] meta def tactic_result := interaction_monad.result tactic_state
 
 namespace tactic
   export interaction_monad (hiding failed fail)
   meta def failed {α : Type} : tactic α := interaction_monad.failed
-  meta def fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
+  meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
   interaction_monad.fail msg
 end tactic
 
-namespace tactic_result
-  export interaction_monad.result
-end tactic_result
-
 open tactic
-open tactic_result
 
-infixl ` >>=[tactic] `:2 := interaction_monad_bind
-infixl ` >>[tactic] `:2  := interaction_monad_seq
+infixl ` >>=[tactic] `:2 := @bind tactic _ _ _
+infixl ` >>[tactic] `:2  := @has_bind.and_then _ _ tactic _
 
 meta instance : alternative tactic :=
 { failure := @interaction_monad.failed _,
-  orelse  := @interaction_monad_orelse _,
+  orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
 
 namespace tactic
 variables {α : Type}
 
 meta def try_core (t : tactic α) : tactic (option α) :=
-λ s, result.cases_on (t s)
- (λ a, success (some a))
- (λ e ref s', success none s)
+optional t
 
 meta def skip : tactic unit :=
-success ()
+pure ()
 
 meta def try (t : tactic α) : tactic unit :=
 try_core t >>[tactic] skip
 
+/-- Try each tactic in turn. If all fail, fail with the message of the first one. -/
 meta def try_lst : list (tactic unit) → tactic unit
 | []            := failed
-| (tac :: tacs) := λ s,
-  match tac s with
-  | result.success _ s' := try (try_lst tacs) s'
-  | result.exception e p s' :=
-    match try_lst tacs s' with
-    | result.exception _ _ _ := result.exception e p s'
-    | r := r
-    end
-  end
+| (tac :: tacs) := monad_except.orelse' (tac >> try (try_lst tacs)) (try_lst tacs)
 
 meta def fail_if_success {α : Type} (t : tactic α) : tactic unit :=
-λ s, result.cases_on (t s)
- (λ a s, mk_exception "fail_if_success combinator failed, given tactic succeeded" none s)
- (λ e ref s', success () s)
-
-meta def success_if_fail {α : Type} (t : tactic α) : tactic unit :=
-λ s, match t s with
-| (interaction_monad.result.exception _ _ s') := success () s
-| (interaction_monad.result.success a s) :=
-   mk_exception "success_if_fail combinator failed, given tactic succeeded" none s
-end
+do (some _) ← try_core t | skip,
+   fail "fail_if_success combinator failed, given tactic succeeded"
 
 open nat
 /-- (iterate_at_most n t): repeat the given tactic at most n times or until t fails -/
@@ -114,9 +89,9 @@ meta def iterate : tactic unit → tactic unit :=
 iterate_at_most 100000
 
 meta def returnopt (e : option α) : tactic α :=
-λ s, match e with
-| (some a) := success a s
-| none     := mk_exception "failed" none s
+match e with
+| (some a) := pure a
+| none     := failed
 end
 
 meta instance opt_to_tac : has_coe (option α) (tactic α) :=
@@ -124,25 +99,20 @@ meta instance opt_to_tac : has_coe (option α) (tactic α) :=
 
 /-- Decorate t's exceptions with msg -/
 meta def decorate_ex (msg : format) (t : tactic α) : tactic α :=
-λ s, result.cases_on (t s)
-  success
-  (λ opt_thunk,
-     match opt_thunk with
-     | some e := exception (some (λ u, msg ++ format.nest 2 (format.line ++ e u)))
-     | none   := exception none
-     end)
+catch t $ λ e,
+  throw { msg := (λ u, msg ++ format.nest 2 (format.line ++ e.msg u)), ..e }
 
-@[inline] meta def write (s' : tactic_state) : tactic unit :=
-λ s, success () s'
+@[inline] protected meta def put (s' : tactic_state) : tactic unit :=
+_root_.put s' >> skip
 
-@[inline] meta def read : tactic tactic_state :=
-λ s, success s s
+@[inline] protected meta def get : tactic tactic_state :=
+_root_.get
 
 meta def get_options : tactic options :=
-do s ← read, return s.get_options
+tactic_state.get_options <$> get
 
 meta def set_options (o : options) : tactic unit :=
-do s ← read, write (s.set_options o)
+modify (λ s, s.set_options o) >> skip
 
 meta def save_options {α : Type} (t : tactic α) : tactic α :=
 do o ← get_options,
@@ -150,15 +120,12 @@ do o ← get_options,
    set_options o,
    return a
 
-meta def returnex {α : Type} (e : exceptional α) : tactic α :=
-λ s, match e with
-| exceptional.success a      := success a s
-| exceptional.exception ._ f :=
-  match get_options s with
-  | success opt _   := exception (some (λ u, f opt)) none s
-  | exception _ _ _ := exception (some (λ u, f options.mk)) none s
-  end
-end
+meta def returnex {α : Type} : exceptional α → tactic α
+| (except.ok a)    := pure a
+| (except.error f) :=
+  do opts ← get_options,
+  s ← get,
+  throw { msg := (λ u, f opts), pos := none, state := s }
 
 meta instance ex_to_tac {α : Type} : has_coe (exceptional α) (tactic α) :=
 ⟨returnex⟩
@@ -166,19 +133,21 @@ meta instance ex_to_tac {α : Type} : has_coe (exceptional α) (tactic α) :=
 end tactic
 
 meta def tactic_format_expr (e : expr) : tactic format :=
-do s ← tactic.read, return (tactic_state.format_expr s e)
+do s ← get, return (tactic_state.format_expr s e)
 
-meta class has_to_tactic_format (α : Type u) :=
+meta class {u} has_to_tactic_format (α : Type u) :=
 (to_tactic_format : α → tactic format)
 
 meta instance : has_to_tactic_format expr :=
 ⟨tactic_format_expr⟩
 
-meta def tactic.pp {α : Type u} [has_to_tactic_format α] : α → tactic format :=
+meta def {u} tactic.pp {α : Type u} [has_to_tactic_format α] : α → tactic format :=
 has_to_tactic_format.to_tactic_format
 
 open tactic format
 
+section
+universes u v
 meta instance {α : Type u} [has_to_tactic_format α] : has_to_tactic_format (list α) :=
 ⟨has_map.map to_fmt ∘ monad.mapm pp⟩
 
@@ -198,30 +167,30 @@ meta instance {α} (a : α) : has_to_tactic_format (reflected a) :=
 
 @[priority 10] meta instance has_to_format_to_has_to_tactic_format (α : Type u) [has_to_format α] : has_to_tactic_format α :=
 ⟨(λ x, return x) ∘ to_fmt⟩
+end
 
 namespace tactic
 open tactic_state
 
 meta def get_env : tactic environment :=
-do s ← read,
-   return $ env s
+env <$> get
 
 meta def get_decl (n : name) : tactic declaration :=
-do s ← read,
-   (env s).get n
+do env ← get_env,
+   env.get n
 
-meta def trace {α : Type u} [has_to_tactic_format α] (a : α) : tactic unit :=
+meta def {u} trace {α : Type u} [has_to_tactic_format α] (a : α) : tactic unit :=
 do fmt ← pp a,
    return $ _root_.trace_fmt fmt (λ u, ())
 
 meta def trace_call_stack : tactic unit :=
-assume state, _root_.trace_call_stack (success () state)
+scope_impure @_root_.trace_call_stack (pure ())
 
 meta def timetac {α : Type} (desc : string) (t : thunk (tactic α)) : tactic α :=
-λ s, timeit desc (t () s)
+pure () >>= λ u, scope_impure (λ β, timeit desc) (t u)
 
 meta def trace_state : tactic unit :=
-do s ← read,
+do s ← get,
    trace $ to_fmt s
 
 inductive transparency
@@ -538,7 +507,7 @@ meta def step {α : Type} (t : tactic α) : tactic unit :=
 t >>[tactic] cleanup
 
 meta def istep {α : Type} (line0 col0 : ℕ) (line col : ℕ) (t : tactic α) : tactic unit :=
-λ s, (@scope_trace _ line col (λ _, step t s)).clamp_pos line0 line col
+interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step t))
 
 meta def is_prop (e : expr) : tactic bool :=
 do t ← infer_type e,
@@ -546,10 +515,8 @@ do t ← infer_type e,
 
 /-- Return true iff n is the name of declaration that is a proposition. -/
 meta def is_prop_decl (n : name) : tactic bool :=
-do env ← get_env,
-   d   ← env.get n,
-   t   ← return $ d.type,
-   is_prop t
+do d ← get_decl n,
+   is_prop d.type
 
 meta def is_proof (e : expr) : tactic bool :=
 infer_type e >>= is_prop
@@ -722,7 +689,7 @@ do { ctx ← local_context,
 <|> fail "assumption tactic failed"
 
 meta def save_info (p : pos) : tactic unit :=
-do s ← read,
+do s ← get,
    tactic.save_info_thunk p (λ _, tactic_state.to_format s)
 
 notation `‹` p `›` := (by assumption : p)
@@ -982,8 +949,7 @@ meta def mk_num_meta_univs : nat → tactic (list level)
 
 /-- Return `expr.const c [l_1, ..., l_n]` where l_i's are fresh universe meta-variables. -/
 meta def mk_const (c : name) : tactic expr :=
-do env  ← get_env,
-   decl ← env.get c,
+do decl ← get_decl c,
    let num := decl.univ_params.length,
    ls   ← mk_num_meta_univs num,
    return (expr.const c ls)
@@ -1192,11 +1158,9 @@ do ns  ← open_namespaces,
     memory allocations (in thousands) performed by 'tac'. This is a deterministic way of interrupting
     long running tactics. -/
 meta def try_for {α} (max : nat) (tac : tactic α) : tactic α :=
-λ s,
-match _root_.try_for max (tac s) with
-| some r := r
-| none   := mk_exception "try_for tactic failed, timeout" none s
-end
+do some r ← scope_impure_opt (λ α, _root_.try_for max) tac
+     | mk_exception "try_for tactic failed, timeout" none,
+   pure r
 
 meta def updateex_env (f : environment → exceptional environment) : tactic unit :=
 do env ← get_env,
@@ -1279,17 +1243,15 @@ meta def any_of {α β} : list α → (α → tactic β) → tactic β
                    end
 end list
 
-/- Install monad laws tactic and use it to prove some instances. -/
-
 meta def order_laws_tac := whnf_target >> intros >> to_expr ``(iff.refl _) >>= exact
 
-meta def monad_from_pure_bind {m : Type u → Type v}
+meta def {u v} monad_from_pure_bind {m : Type u → Type v}
   (pure : Π {α : Type u}, α → m α)
   (bind : Π {α β : Type u}, m α → (α → m β) → m β) : monad m :=
-{pure := @pure, bind := @bind}
+{ pure := @pure, bind := @bind }
 
 meta instance : monad task :=
-{map := @task.map, bind := @task.bind, pure := @task.pure}
+{ map := @task.map, bind := @task.bind, pure := @task.pure }
 
 namespace tactic
 meta def mk_id_proof (prop : expr) (pr : expr) : expr :=

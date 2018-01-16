@@ -40,9 +40,9 @@ namespace lazy_tactic
 open lazy_list
 
 meta def of_tactic {α : Type} (t : tactic α) : lazy_tactic α :=
-λ s, match t s with
-| result.success a new_s    := lazy_list.singleton (a, new_s)
-| result.exception f e s := lazy_list.nil
+λ s, match t.run s with
+| except.ok (a, new_s) := lazy_list.singleton (a, new_s)
+| except.error _       := lazy_list.nil
 end
 
 meta instance {α : Type} : has_coe (tactic α) (lazy_tactic α) :=
@@ -72,10 +72,11 @@ meta def choose {α} (xs : list α) : lazy_tactic α :=
 λ s, of_list $ xs^.map (λ a, (a, s))
 
 protected meta def run {α} (t : lazy_tactic α) : tactic α :=
-λ s, match t s with
-| nil                := tactic.failed s
-| cons (a, new_s) ss := result.success a new_s
-end
+do s ← get,
+   match t s with
+   | nil                := tactic.failed
+   | cons (a, new_s) ss := put new_s >> pure a
+   end
 
 open tactic
 
