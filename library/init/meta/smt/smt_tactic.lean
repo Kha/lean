@@ -76,9 +76,6 @@ meta instance : has_monad_lift tactic smt_tactic :=
 meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 ⟨monad_lift⟩
 
-meta instance : monad_fail smt_tactic :=
-{ fail := λ α s, (tactic.fail (to_fmt s) : smt_tactic α), ..smt_tactic.monad }
-
 namespace smt_tactic
 open tactic (transparency)
 meta constant intros                     : smt_tactic unit
@@ -143,9 +140,7 @@ meta def fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : smt_tact
 tactic.fail msg
 
 meta def try {α : Type} (t : smt_tactic α) : smt_tactic unit :=
-⟨λ ss ts, result.cases_on (t.run ss ts)
- (λ ⟨a, new_ss⟩, result.success ((), new_ss))
- (λ e ref s', result.success ((), ss) ts)⟩
+optional t >> pure ()
 
 /-- `iterate_at_most n t`: repeat the given tactic at most n times or until t fails -/
 meta def iterate_at_most : nat → smt_tactic unit → smt_tactic unit
@@ -167,11 +162,11 @@ open tactic
 
 protected meta def read : smt_tactic (smt_state × tactic_state) :=
 do s₁ ← get,
-   s₂ ← tactic.read,
+   s₂ ← tactic.get,
    return (s₁, s₂)
 
 protected meta def write : smt_state × tactic_state → smt_tactic unit :=
-λ ⟨ss, ts⟩, ⟨λ _ _, result.success ((), ss) ts⟩
+λ s, put s.1 >> tactic.put s.2
 
 private meta def mk_smt_goals_for (cfg : smt_config) : list expr → list smt_goal → list expr
                                   → tactic (list smt_goal × list expr)

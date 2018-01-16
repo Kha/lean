@@ -15,10 +15,6 @@ meta constant parser_state.options : parser_state → options
 meta constant parser_state.cur_pos : parser_state → pos
 
 @[reducible] meta def parser := interaction_monad parser_state
-@[reducible] meta def parser_result := interaction_monad.result parser_state
-
-open interaction_monad
-open interaction_monad.result
 
 namespace parser
 variable {α : Type}
@@ -41,7 +37,8 @@ meta constant skip_info (p : parser α) : parser α
 meta constant set_goal_info_pos (p : parser α) : parser α
 
 /-- Return the current parser position without consuming any input. -/
-meta def cur_pos : parser pos := λ s, success (parser_state.cur_pos s) s
+meta def cur_pos : parser pos :=
+parser_state.cur_pos <$> get
 
 /-- Temporarily replace input of the parser state, run `p`, and return remaining input. -/
 meta constant with_input (p : parser α) (input : string) : parser (α × string)
@@ -50,17 +47,13 @@ meta constant with_input (p : parser α) (input : string) : parser (α × string
 meta constant command_like : parser unit
 
 meta def parser_orelse (p₁ p₂ : parser α) : parser α :=
-λ s,
-let pos₁ := parser_state.cur_pos s in
-result.cases_on (p₁ s)
-  success
-  (λ e₁ ref₁ s',
-    let pos₂ := parser_state.cur_pos s' in
-    if pos₁ ≠ pos₂ then
-      exception e₁ ref₁ s'
-    else result.cases_on (p₂ s)
-     success
-     exception)
+do s ← get,
+   let pos₁ := s.cur_pos,
+   catch p₁ $ λ e,
+   do pos₂ ← cur_pos,
+      if pos₁ ≠ pos₂ then
+        throw e
+      else put s >> p₂
 
 meta instance : alternative parser :=
 { failure := @interaction_monad.failed _,
@@ -80,11 +73,12 @@ local postfix `*`:100 := many
 meta def sep_by : parser unit → parser α → parser (list α)
 | s p := (list.cons <$> p <*> (s *> p)*) <|> return []
 
-meta def tactic_to_parser : tactic α → parser α :=
-λ t s, match t (tactic_state.mk_empty s.env s.options) with
- | success x ts    := (set_env ts.env >> pure x) s
- | exception f p _ := exception f p s
- end
+meta def tactic_to_parser (t : tactic α) : parser α :=
+do s ← get,
+   match t.run.run (tactic_state.mk_empty s.env s.options) with
+   | (except.ok a, ts) := set_env ts.env >> pure a
+   | (except.error e, _) := throw e
+   end
 
 meta instance : has_coe (tactic α) (parser α) :=
 ⟨tactic_to_parser⟩

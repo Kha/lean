@@ -268,7 +268,7 @@ vm_obj vm_parser_with_input(vm_obj const &, vm_obj const & vm_p, vm_obj const & 
     }
 
     vm_res = mk_vm_pair(vm_res, to_obj(input.substr(spos)));
-    return lean_parser::mk_result(vm_res, lean_parser::get_result_state(vm_state));
+    return lean_parser::mk_success(vm_res, lean_parser::to_state(lean_parser::get_result_state(vm_state)));
 }
 static vm_obj vm_parser_command_like(vm_obj const & vm_s) {
     auto s = lean_parser::to_state(vm_s);

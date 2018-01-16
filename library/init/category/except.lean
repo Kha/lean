@@ -8,7 +8,7 @@ prelude
 import init.category.transformers
 universes u v w
 
-inductive except (ε α : Type u)
+inductive except (ε : Type u) (α : Type v)
 | error {} : ε → except
 | ok {} : α → except
 
@@ -22,18 +22,33 @@ namespace except
 section
   parameter {ε : Type u}
 
-  protected def return {α : Type u} (a : α) : except ε α :=
+  protected def return {α : Type v} (a : α) : except ε α :=
   except.ok a
 
-  protected def map {α β : Type u} (f : α → β) : except ε α → except ε β
+  protected def map {α β : Type v} (f : α → β) : except ε α → except ε β
   | (except.error err) := except.error err
   | (except.ok v) := except.ok $ f v
 
-  protected def bind {α β : Type u} (ma : except ε α) (f : α → except ε β) : except ε β :=
+  protected def map_error {ε' : Type u} {α : Type v} (f : ε → ε') : except ε α → except ε' α
+  | (except.error err) := except.error $ f err
+  | (except.ok v) := except.ok v
+
+  protected def bind {α β : Type v} (ma : except ε α) (f : α → except ε β) : except ε β :=
   match ma with
   | (except.error err) := except.error err
   | (except.ok v) := f v
   end
+
+  protected def to_bool {α : Type v} : except ε α → bool
+  | (except.ok _)    := tt
+  | (except.error _) := ff
+
+  protected def to_option {α : Type v} : except ε α → option α
+  | (except.ok a)    := some a
+  | (except.error _) := none
+
+  instance : monad (except ε) :=
+  { pure := @return, bind := @bind }
 end
 end except
 
@@ -58,6 +73,9 @@ section
 
   protected def lift {α : Type u} (t : m α) : except_t ε m α :=
   ⟨except.ok <$> t⟩
+
+  instance : has_monad_lift m (except_t ε m) :=
+  ⟨@except_t.lift⟩
 
   protected def catch {α : Type u} (ma : except_t ε m α) (handle : ε → except_t ε m α) : except_t ε m α :=
   ⟨ma.run >>= λ res, match res with
