@@ -141,12 +141,8 @@ vm_obj to_obj(smt_goal const & s) {
     return mk_vm_external(new (get_vm_allocator().allocate(sizeof(vm_smt_goal))) vm_smt_goal(s));
 }
 
-vm_obj tactic_result_to_smt_tactic_result(vm_obj const & r, vm_obj const & ss) {
-    return tactic::mk_result(mk_vm_pair(tactic::get_result_value(r), ss), tactic::get_result_state(r));
-}
-
 vm_obj mk_smt_tactic_success(vm_obj const & a, vm_obj const & ss, vm_obj const & ts) {
-    return mk_vm_constructor(0, mk_vm_pair(a, ss), ts);
+    return tactic::mk_success(mk_vm_pair(a, ss), ts);
 }
 
 vm_obj mk_smt_tactic_success(vm_obj const & ss, vm_obj const & ts) {
@@ -155,6 +151,13 @@ vm_obj mk_smt_tactic_success(vm_obj const & ss, vm_obj const & ts) {
 
 vm_obj mk_smt_tactic_success(vm_obj const & ss, tactic_state const & ts) {
     return mk_smt_tactic_success(ss, to_obj(ts));
+}
+
+vm_obj tactic_result_to_smt_tactic_result(vm_obj const & r, vm_obj const & ss) {
+    if (auto ts = tactic::is_success(r))
+        return mk_smt_tactic_success(tactic::get_result_value(r), ss, to_obj(*ts));
+    else
+        return r;
 }
 
 /* Remove auxiliary definitions introduced by the equation compiler.

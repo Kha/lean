@@ -7,5 +7,7 @@ prelude
 import init.category.monad
 universe u
 
-instance : monad.{u u} id :=
-{ pure := @id, bind := λ _ _ x f, f x }
+@[inline] def id_bind {α β : Type u} (x : α) (f : α → id β) : id β := f x
+
+@[inline] instance : monad.{u u} id :=
+{ pure := @id, bind := @id_bind }
