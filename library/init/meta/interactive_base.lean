@@ -89,9 +89,8 @@ private meta def maybe_paren : list format → format
 | fs  := paren (join fs)
 
 private meta def unfold (e : expr) : tactic expr :=
-do (expr.const f_name f_lvls) ← return e.get_app_fn | failed,
-   env   ← get_env,
-   decl  ← env.get f_name,
+do (expr.const f_name f_lvls) ← return e.get_app_fn,
+   decl  ← get_decl f_name,
    new_f ← decl.instantiate_value_univ_params f_lvls,
    head_beta (expr.mk_app new_f e.get_app_args)
 

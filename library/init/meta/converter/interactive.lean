@@ -10,7 +10,7 @@ import init.meta.interactive init.meta.converter.conv
 
 namespace conv
 meta def save_info (p : pos) : conv unit :=
-do s ← tactic.read,
+do s ← tactic.get,
    tactic.save_info_thunk p (λ _, s.to_format tt)
 
 meta def step {α : Type} (c : conv α) : conv unit :=
