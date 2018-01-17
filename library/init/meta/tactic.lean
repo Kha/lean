@@ -109,9 +109,8 @@ _root_.get
 
 /-- Decorate t's exceptions with msg -/
 meta def decorate_ex (msg : format) (t : tactic α) : tactic α :=
-⟨except.map_error
-  (λ (e : interaction_monad_error),
-     ((λ u, msg ++ format.nest 2 (format.line ++ e.1 u)), e.2)) <$> t.run⟩
+catch t $ λ ⟨fmt, pos⟩,
+  throw ((λ u, msg ++ format.nest 2 (format.line ++ fmt u)), pos)
 
 meta def get_options : tactic options :=
 tactic_state.get_options <$> get
@@ -188,10 +187,10 @@ do fmt ← pp a,
    return $ _root_.trace_fmt fmt (λ u, ())
 
 meta def trace_call_stack : tactic unit :=
-⟨⟨λ s, _root_.trace_call_stack (except.ok (), s)⟩⟩
+scope_impure @_root_.trace_call_stack (pure ())
 
 meta def timetac {α : Type} (desc : string) (t : thunk (tactic α)) : tactic α :=
-⟨⟨λ s, timeit desc ((t ()).run.run s)⟩⟩
+pure () >>= λ u, scope_impure (λ β, timeit desc) (t u)
 
 meta def trace_state : tactic unit :=
 do s ← get,
@@ -511,7 +510,7 @@ meta def step {α : Type} (t : tactic α) : tactic unit :=
 t >>[tactic] cleanup
 
 meta def istep {α : Type} (line0 col0 : ℕ) (line col : ℕ) (t : tactic α) : tactic unit :=
-interaction_monad.clamp_pos line0 line col ⟨⟨λ s, (@scope_trace _ line col (λ _, (step t).run.run s))⟩⟩
+interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step t))
 
 meta def is_prop (e : expr) : tactic bool :=
 do t ← infer_type e,
@@ -1162,11 +1161,9 @@ do ns  ← open_namespaces,
     memory allocations (in thousands) performed by 'tac'. This is a deterministic way of interrupting
     long running tactics. -/
 meta def try_for {α} (max : nat) (tac : tactic α) : tactic α :=
-⟨⟨λ s,
-  match _root_.try_for max (tac.run.run s) with
-  | some r := r
-  | none   := (mk_exception "try_for tactic failed, timeout" none).run.run s
-  end⟩⟩
+do some r ← scope_impure_opt (λ α, _root_.try_for max) tac
+     | mk_exception "try_for tactic failed, timeout" none,
+   pure r
 
 meta def updateex_env (f : environment → exceptional environment) : tactic unit :=
 do env ← get_env,
