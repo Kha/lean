@@ -6,6 +6,7 @@ Authors: Gabriel Ebner
 prelude
 import init.function init.coe
 import init.category.monad
+import init.util
 
 universes u v w
 
@@ -64,3 +65,13 @@ class monad_run (out : out_param $ Type u → Type v) (m : Type u → Type v) :=
 (unrun {} {α : Type u} : out α → m α)
 
 export monad_run (run unrun)
+
+/-- Lift an impure scoping function. -/
+class has_scope_impure (m : Type u → Type v) :=
+(scope_impure_opt {} {α : Type u} : (∀ {β : Type u}, thunk β → option β) → thunk (m α) → m (option α))
+
+export has_scope_impure (scope_impure_opt)
+
+meta def scope_impure {m : Type u → Type v} [monad m] [has_scope_impure m] {α : Type u} :
+  (∀ {β : Type u}, thunk β → β) → m α → m α :=
+λ f x, scope_impure_opt (λ β, some ∘ f) x >>= λ o, option.rec undefined pure o
