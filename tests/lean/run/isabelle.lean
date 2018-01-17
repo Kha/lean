@@ -40,7 +40,7 @@ namespace lazy_tactic
 open lazy_list
 
 meta def of_tactic {α : Type} (t : tactic α) : lazy_tactic α :=
-λ s, match t.run.run s with
+λ s, match t.run s with
 | (except.ok a, new_s) := lazy_list.singleton (a, new_s)
 | (except.error _, _)  := lazy_list.nil
 end
@@ -95,7 +95,7 @@ end lazy_tactic
 open lazy_tactic
 
 example (p q : Prop) : q → p ∨ q :=
-by run $ do
+by lazy_tactic.run $ do
  tactic.intros,
  constructor,
  tactic.trace_state,
