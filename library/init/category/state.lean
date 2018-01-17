@@ -106,5 +106,11 @@ local attribute [instance] monad_state_functor.functor
 def zoom {σ σ'} {m n n'} [monad m] {α : Type u} (f : σ → σ') (f' : σ' → σ) [monad_state_functor σ' σ m n n'] : n α → n' α :=
 monad_map $ λ α, (state_t.zoom f f' : state_t σ' m α → state_t σ m α)
 
+instance (σ m) [monad m] [has_scope_impure m] : has_scope_impure (state_t σ m) :=
+-- note: needs to go inside binder
+⟨λ α f x, ⟨λ s, do some ⟨a, s'⟩ ← scope_impure_opt @f ((x ()).run s)
+                     | pure (none, s),
+                   pure (some a, s')⟩⟩
+
 instance (σ m out) [monad_run out m] : monad_run (λ α, σ → out (α × σ)) (state_t σ m) :=
 ⟨λ α x, run ∘ x.run', λ α a, state_t.mk (unrun ∘ a)⟩
