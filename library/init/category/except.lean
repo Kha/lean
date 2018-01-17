@@ -97,5 +97,10 @@ def map_except_t {ε m m'} [monad m] [monad m'] {α} (f : ∀ {α}, m α → m' 
 instance (ε m m') [monad m] [monad m'] : monad_functor m m' (except_t ε m) (except_t ε m') :=
 ⟨@map_except_t ε m m' _ _⟩
 
+instance (ε m) [monad m] [has_scope_impure m] : has_scope_impure (except_t ε m) :=
+⟨λ α f x, ⟨do some x ← scope_impure_opt @f (x ()).run
+                | pure (pure none),
+              pure (some <$> x)⟩⟩
+
 instance (ε m out) [monad_run out m] : monad_run (λ α, out (except ε α)) (except_t ε m) :=
 ⟨λ α, run ∘ except_t.run, λ α, except_t.mk ∘ unrun⟩
