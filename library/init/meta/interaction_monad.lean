@@ -14,6 +14,13 @@ universes u v
 meta def interaction_monad_error :=
 (unit → format) × option pos
 
+meta def interaction_monad_error.clamp_pos {m : Type u → Type v} [monad_except interaction_monad_error m] {α : Type u} (line0 line col : ℕ) (x : m α) : m α :=
+catch x $ λ e,
+  match e with
+  | (msg, some p) := throw (msg, some $ if p.line < line0 then ⟨line, col⟩ else p)
+  | (msg, none)   := throw (msg, (some ⟨line, col⟩))
+  end
+
 section
 variables {st : Type} {α : Type}
 variables [has_to_string α]
@@ -27,58 +34,51 @@ meta instance interaction_monad.result_has_string : has_to_string (result state 
 ⟨interaction_monad.result_to_string⟩-/
 end
 
-meta def interaction_monad (st : Type) :=
+@[irreducible] meta def interaction_monad (st : Type) :=
 except_t interaction_monad_error $ state st
 
+def infer_instance {α : Type u} [i : α] : α := i
+
+namespace interaction_monad
 section
 parameter {st : Type}
 variables {α : Type} {β : Type u}
 local notation `m` := interaction_monad st
 
+section
 local attribute [reducible] interaction_monad
-def infer_instance {α : Type u} [i : α] : α := i
-meta instance interaction_monad.monad : monad m := infer_instance
-meta instance interaction_monad.monad_except : monad_except interaction_monad_error m := infer_instance
-meta instance interaction_monad.monad_state_lift : monad_state_lift st id m := infer_instance
+meta instance : monad m := infer_instance
+meta instance : monad_run _ m := infer_instance
+meta instance : monad_except _ m := infer_instance
+meta instance : monad_state_lift _ _ m := infer_instance
+meta instance : has_scope_impure m := infer_instance
+end
 
-meta def interaction_monad.clamp_pos (line0 line col : ℕ) (x : m α) : m α :=
-⟨do a ← x.run,
-    pure $ match a with
-    | ok@(except.ok _)             := ok
-    | (except.error (msg, some p)) := except.error (msg, some $ if p.line < line0 then ⟨line, col⟩ else p)
-    | (except.error (msg, none))   := except.error (msg, (some ⟨line, col⟩))
-    end⟩
+meta def run := monad_run.run
 
-meta def interaction_monad.mk_exception [has_to_format β] (msg : β) (ref : option expr) : m α :=
+meta def mk_exception [has_to_format β] (msg : β) (ref : option expr) : m α :=
 throw ((λ _, to_fmt msg), none)
 
-meta def interaction_monad.fail [has_to_format β] (msg : β) : m α :=
+meta def fail [has_to_format β] (msg : β) : m α :=
 interaction_monad.mk_exception msg none
 
-meta def interaction_monad.failed {α : Type} : m α :=
+meta def failed {α : Type} : m α :=
 interaction_monad.fail "failed"
 
-meta def interaction_monad.orelse (t₁ t₂ : m α) : m α :=
-⟨⟨λ s, match t₁.run.run s with
-       | e₁@(except.error _, _) := t₂.run.run s
-       | x := x
-       end⟩⟩
+meta def orelse (t₁ t₂ : m α) : m α :=
+do s ← get,
+   catch t₁ $ λ _, put s >> t₂
 
 /- Alternative orelse operator that allows to select which exception should be used.
    The default is to use the first exception since the standard `orelse` uses the second. -/
-meta def interaction_monad.orelse' (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
-⟨⟨λ s, match t₁.run.run s with
-       | e₁@(except.error _, _) := match t₂.run.run s with
-         | e₂@(except.error _, _) := if use_first_ex then e₁ else e₂
-         | x := x
-         end
-       | x := x
-       end⟩⟩
+meta def orelse' (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
+do s ← get,
+   catch t₁ $ λ e₁,
+   do s₁ ← get,
+      put s,
+      catch t₂ $ λ e₂, if use_first_ex then put s₁ >> throw e₁ else throw e₂
 
-meta instance interaction_monad.monad_fail : monad_fail m :=
+meta instance : monad_fail m :=
 { fail := λ α s, interaction_monad.fail (to_fmt s), ..interaction_monad.monad }
-
--- TODO: unify `parser` and `tactic` behavior?
--- meta instance interaction_monad.alternative : alternative m :=
--- ⟨@interaction_monad_fmap, (λ α a s, success a s), (@fapp _ _), @interaction_monad.failed, @interaction_monad_orelse⟩
 end
+end interaction_monad

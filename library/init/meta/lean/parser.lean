@@ -75,7 +75,7 @@ meta def sep_by : parser unit → parser α → parser (list α)
 
 meta def tactic_to_parser (t : tactic α) : parser α :=
 do s ← get,
-   match t.run.run (tactic_state.mk_empty s.env s.options) with
+   match t.run (tactic_state.mk_empty s.env s.options) with
    | (except.ok a, ts) := set_env ts.env >> pure a
    | (except.error e, _) := throw e
    end
