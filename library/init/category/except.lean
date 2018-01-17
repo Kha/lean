@@ -12,7 +12,7 @@ inductive except (ε : Type u) (α : Type v)
 | error {} : ε → except
 | ok {} : α → except
 
-class monad_except (ε : out_param (Type u)) (m : Type v → Type w) [monad m] :=
+class monad_except (ε : out_param (Type u)) (m : Type v → Type w) :=
 (throw {} {α : Type v} : ε → m α)
 (catch {} {α : Type v} : m α → (ε → m α) → m α)
 
@@ -52,7 +52,7 @@ section
 end
 end except
 
-structure except_t (ε : Type u) (m : Type u → Type v) [monad m] (α : Type u) : Type v :=
+structure except_t (ε : Type u) (m : Type u → Type v) (α : Type u) : Type v :=
 (run : m (except ε α))
 
 attribute [pp_using_anonymous_constructor] except_t
@@ -86,9 +86,6 @@ section
   instance : monad (except_t ε m) :=
   { pure := @return, bind := @bind }
 end
-
-instance (ε : Type u) : monad_transformer (except_t ε) :=
-{ is_monad := @except_t.monad ε, monad_lift := @except_t.lift ε }
 end except_t
 
 instance (m ε) [monad m] : monad_except ε (except_t ε m) :=
@@ -99,3 +96,6 @@ def map_except_t {ε m m'} [monad m] [monad m'] {α} (f : ∀ {α}, m α → m' 
 
 instance (ε m m') [monad m] [monad m'] : monad_functor m m' (except_t ε m) (except_t ε m') :=
 ⟨@map_except_t ε m m' _ _⟩
+
+instance (ε m out) [monad_run out m] : monad_run (λ α, out (except ε α)) (except_t ε m) :=
+⟨λ α, run ∘ except_t.run, λ α, except_t.mk ∘ unrun⟩
