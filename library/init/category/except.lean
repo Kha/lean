@@ -115,5 +115,11 @@ instance (m ε) [monad m] : monad_except ε (except_t ε m) :=
 { throw := λ α, except_t.mk ∘ pure ∘ except.error, catch := @except_t.catch ε _ _ }
 
 
+instance (ε m) [monad m] [has_scope_impure m] : has_scope_impure (except_t ε m) :=
+⟨λ α f x, ⟨do some x ← scope_impure_opt @f (x ()).run
+                | pure (pure none),
+              pure (some <$> x)⟩⟩
+
+
 instance (ε m out) [monad_run out m] : monad_run (λ α, out (except ε α)) (except_t ε m) :=
 ⟨λ α, run ∘ except_t.run, λ α, except_t.mk ∘ unrun⟩
