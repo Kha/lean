@@ -52,7 +52,7 @@ infixl ` >>[tactic] `:2  := @has_bind.and_then _ _ tactic _
 
 meta instance : alternative tactic :=
 { failure := @interaction_monad.failed _,
-  orelse  := @interaction_monad.orelse _,
+  orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
 
 namespace tactic
@@ -69,7 +69,7 @@ try_core t >>[tactic] skip
 
 meta def try_lst : list (tactic unit) → tactic unit
 | []            := failed
-| (tac :: tacs) := interaction_monad.orelse' (tac >> try (try_lst tacs)) (try_lst tacs)
+| (tac :: tacs) := monad_except.orelse' (tac >> try (try_lst tacs)) (try_lst tacs)
 
 meta def fail_if_success {α : Type} (t : tactic α) : tactic unit :=
 do (some _) ← try_core t | skip,
@@ -109,8 +109,8 @@ _root_.get
 
 /-- Decorate t's exceptions with msg -/
 meta def decorate_ex (msg : format) (t : tactic α) : tactic α :=
-catch t $ λ ⟨fmt, pos⟩,
-  throw ((λ u, msg ++ format.nest 2 (format.line ++ fmt u)), pos)
+catch t $ λ e,
+  throw { msg := (λ u, msg ++ format.nest 2 (format.line ++ e.msg u)), ..e }
 
 meta def get_options : tactic options :=
 tactic_state.get_options <$> get
@@ -128,7 +128,8 @@ meta def returnex {α : Type} : exceptional α → tactic α
 | (except.ok a)    := pure a
 | (except.error f) :=
   do opts ← get_options,
-  throw ((λ u, f opts), none)
+  s ← get,
+  throw { msg := (λ u, f opts), pos := none, state := s }
 
 meta instance ex_to_tac {α : Type} : has_coe (exceptional α) (tactic α) :=
 ⟨returnex⟩

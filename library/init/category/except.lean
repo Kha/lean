@@ -5,7 +5,7 @@ Authors: Jared Roesch, Sebastian Ullrich
 -/
 
 prelude
-import init.category.transformers
+import init.category.alternative init.category.transformers
 universes u v w
 
 inductive except (ε : Type u) (α : Type v)
@@ -15,6 +15,18 @@ inductive except (ε : Type u) (α : Type v)
 class monad_except (ε : out_param (Type u)) (m : Type v → Type w) :=
 (throw {} {α : Type v} : ε → m α)
 (catch {} {α : Type v} : m α → (ε → m α) → m α)
+
+namespace monad_except
+variables {ε : Type u} {m : Type v → Type w}
+
+protected def orelse [monad_except ε m] {α : Type v} (t₁ t₂ : m α) : m α :=
+catch t₁ $ λ _, t₂
+
+/- Alternative orelse operator that allows to select which exception should be used.
+   The default is to use the first exception since the standard `orelse` uses the second. -/
+meta def orelse' [monad_except ε m] {α : Type v} (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
+catch t₁ $ λ e₁, catch t₂ $ λ e₂, throw (if use_first_ex then e₁ else e₂)
+end monad_except
 
 export monad_except (throw catch)
 

@@ -10,11 +10,11 @@ meta def step {α : Type} (t : mytac α) : mytac unit :=
 t >> return ()
 
 meta def istep {α : Type} (line0 col0 line col : nat) (t : mytac α) : mytac unit :=
-catch (scope_impure (λ β, @scope_trace _ line col) (step t)) $ λ ⟨msg_thunk, pos⟩,
+catch (scope_impure (λ β, @scope_trace _ line col) (step t)) $ λ e,
   do v ← get,
      s ← tactic.get,
-     let msg := λ _ : unit, msg_thunk () ++ format.line ++ to_fmt "value: " ++ to_fmt v ++ format.line ++ to_fmt "state:" ++ format.line ++ s.to_format,
-     throw (msg, some ⟨line, col⟩)
+     let msg := λ _ : unit, e.msg () ++ format.line ++ to_fmt "value: " ++ to_fmt v ++ format.line ++ to_fmt "state:" ++ format.line ++ s.to_format,
+     throw { msg := msg, ..e }
 
 meta def execute (tac : mytac unit) : tactic unit :=
 tac.run (name_map.mk nat) >> return ()

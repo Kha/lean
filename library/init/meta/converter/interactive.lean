@@ -134,7 +134,7 @@ private meta def rw_core (rs : list rw_rule) (cfg : rewrite_cfg) : conv unit :=
 rs.mmap' $ λ r, do
  save_info r.pos,
  eq_lemmas ← get_rule_eqn_lemmas r,
- orelse'
+ monad_except.orelse'
    (do h ← to_expr' r.rule, rw_lhs h {symm := r.symm, ..cfg})
    (eq_lemmas.mfirst $ λ n, do e ← tactic.mk_const n, rw_lhs e {symm := r.symm, ..cfg})
    (eq_lemmas.empty)

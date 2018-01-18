@@ -36,7 +36,6 @@ struct interaction_monad {
     static bool is_state(vm_obj const & o);
     static State const & to_state(vm_obj const & o);
     static vm_obj to_obj(State const & s);
-    static vm_obj mk_result(vm_obj const & a, vm_obj const & s);
     static bool is_result_exception(vm_obj const & r);
     static bool is_result_success(vm_obj const & r);
     static vm_obj get_result_value(vm_obj const & r);
