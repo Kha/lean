@@ -15,8 +15,8 @@ undefined_core $ format.to_string $ fmt () ++ format.line ++ to_fmt s
 
 private meta def run_or_fail {α} (s : tactic_state) (tac : tactic α) : α :=
 match tac.run s with
-| (except.ok a, _) := a
-| (except.error (fmt, _), s') := report s' fmt
+| except.ok (a, _) := a
+| except.error e   := report e.state e.msg
 end
 
 meta def run_async {α : Type} (tac : tactic α) : tactic (task α) := do

@@ -13,14 +13,13 @@ open tactic
 meta def conv (α : Type) :=
 tactic α
 
-meta instance : monad conv :=
-by dunfold conv; apply_instance
-
-meta instance : monad_fail conv :=
-by dunfold conv; apply_instance
-
-meta instance : alternative conv :=
-by dunfold conv; apply_instance
+section
+attribute [reducible] conv
+meta instance : monad conv := by apply_instance
+meta instance : monad_fail conv := by apply_instance
+meta instance : alternative conv := by apply_instance
+meta instance : monad_except _ conv := by apply_instance
+end
 
 namespace conv
 meta def convert (c : conv unit) (lhs : expr) (rel : name := `eq) : tactic (expr × expr) :=

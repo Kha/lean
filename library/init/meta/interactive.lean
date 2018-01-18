@@ -329,7 +329,7 @@ private meta def rw_goal (cfg : rewrite_cfg) (rs : list rw_rule) : tactic unit :
 rs.mmap' $ λ r, do
  save_info r.pos,
  eq_lemmas ← get_rule_eqn_lemmas r,
- orelse'
+ monad_except.orelse'
    (do e ← to_expr' r.rule, rewrite_target e {symm := r.symm, ..cfg})
    (eq_lemmas.mfirst $ λ n, do e ← mk_const n, rewrite_target e {symm := r.symm, ..cfg})
    (eq_lemmas.empty)
@@ -342,7 +342,7 @@ private meta def rw_hyp (cfg : rewrite_cfg) : list rw_rule → expr → tactic u
 | (r::rs) hyp := do
   save_info r.pos,
   eq_lemmas ← get_rule_eqn_lemmas r,
-  orelse'
+  monad_except.orelse'
     (do e ← to_expr' r.rule, when (not (uses_hyp e hyp)) $ rewrite_hyp e hyp {symm := r.symm, ..cfg} >>= rw_hyp rs)
     (eq_lemmas.mfirst $ λ n, do e ← mk_const n, rewrite_hyp e hyp {symm := r.symm, ..cfg} >>= rw_hyp rs)
     (eq_lemmas.empty)
