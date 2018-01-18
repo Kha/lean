@@ -11,31 +11,20 @@ import init.meta.pexpr init.data.repr init.data.string.basic init.data.to_string
 
 universes u v
 
-meta def interaction_monad_error :=
-(unit → format) × option pos
+meta structure interaction_monad_error (st : Type) :=
+(msg : unit → format)
+(pos : option pos)
+(state : st)
 
-meta def interaction_monad_error.clamp_pos {m : Type u → Type v} [monad_except interaction_monad_error m] {α : Type u} (line0 line col : ℕ) (x : m α) : m α :=
+meta def interaction_monad_error.clamp_pos {m st α} [monad_except (interaction_monad_error st) m] (line0 line col : ℕ) (x : m α) : m α :=
 catch x $ λ e,
-  match e with
-  | (msg, some p) := throw (msg, some $ if p.line < line0 then ⟨line, col⟩ else p)
-  | (msg, none)   := throw (msg, (some ⟨line, col⟩))
+  match e.pos with
+  | some p := throw { pos := some $ if p.line < line0 then ⟨line, col⟩ else p, ..e }
+  | none   := throw { pos := some ⟨line, col⟩, ..e }
   end
 
-section
-variables {st : Type} {α : Type}
-variables [has_to_string α]
-
-/-meta def interaction_monad.result_to_string : result state α → string
-| (success a s)              := to_string a
-| (exception (some t) ref s) := "Exception: " ++ to_string (t ())
-| (exception none ref s)     := "[silent exception]"
-
-meta instance interaction_monad.result_has_string : has_to_string (result state α) :=
-⟨interaction_monad.result_to_string⟩-/
-end
-
 @[irreducible] meta def interaction_monad (st : Type) :=
-except_t interaction_monad_error $ state st
+state_t st $ except_t (interaction_monad_error st) id
 
 def infer_instance {α : Type u} [i : α] : α := i
 
@@ -57,26 +46,13 @@ end
 meta def run := monad_run.run
 
 meta def mk_exception [has_to_format β] (msg : β) (ref : option expr) : m α :=
-throw ((λ _, to_fmt msg), none)
+do s ← get, throw ⟨(λ _, to_fmt msg), none, s⟩
 
 meta def fail [has_to_format β] (msg : β) : m α :=
 interaction_monad.mk_exception msg none
 
 meta def failed {α : Type} : m α :=
 interaction_monad.fail "failed"
-
-meta def orelse (t₁ t₂ : m α) : m α :=
-do s ← get,
-   catch t₁ $ λ _, put s >> t₂
-
-/- Alternative orelse operator that allows to select which exception should be used.
-   The default is to use the first exception since the standard `orelse` uses the second. -/
-meta def orelse' (t₁ t₂ : m α) (use_first_ex := tt) : m α :=
-do s ← get,
-   catch t₁ $ λ e₁,
-   do s₁ ← get,
-      put s,
-      catch t₂ $ λ e₂, if use_first_ex then put s₁ >> throw e₁ else throw e₂
 
 meta instance : monad_fail m :=
 { fail := λ α s, interaction_monad.fail (to_fmt s), ..interaction_monad.monad }

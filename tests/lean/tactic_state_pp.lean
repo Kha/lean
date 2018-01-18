@@ -15,8 +15,8 @@ do t     ← target,
    return $ to_fmt "Goal: " ++ t_fmt
 
 meta def pp_state (s : tactic_state) : format :=
-match (pp_state_core.run s).1 with
-| except.ok r    := r
+match pp_state_core.run s with
+| except.ok r    := r.1
 | except.error _ := "failed to pretty print"
 end
 

@@ -46,14 +46,14 @@ meta constant with_input (p : parser α) (input : string) : parser (α × string
 /-- Parse a top-level command. -/
 meta constant command_like : parser unit
 
+/- Parsers should not backtrack by default -/
 meta def parser_orelse (p₁ p₂ : parser α) : parser α :=
-do s ← get,
-   let pos₁ := s.cur_pos,
+do pos₁ ← cur_pos,
    catch p₁ $ λ e,
    do pos₂ ← cur_pos,
       if pos₁ ≠ pos₂ then
         throw e
-      else put s >> p₂
+      else p₂
 
 meta instance : alternative parser :=
 { failure := @interaction_monad.failed _,
@@ -76,8 +76,8 @@ meta def sep_by : parser unit → parser α → parser (list α)
 meta def tactic_to_parser (t : tactic α) : parser α :=
 do s ← get,
    match t.run (tactic_state.mk_empty s.env s.options) with
-   | (except.ok a, ts) := set_env ts.env >> pure a
-   | (except.error e, _) := throw e
+   | except.ok (a, ts) := set_env ts.env >> pure a
+   | except.error e := throw { state := s, ..e }
    end
 
 meta instance : has_coe (tactic α) (parser α) :=
