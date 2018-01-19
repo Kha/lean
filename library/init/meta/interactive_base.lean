@@ -34,15 +34,19 @@ meta def loc.get_locals : loc → tactic (list expr)
   | some n := do l ← tactic.get_local n, pure $ l :: ls
   end) []
 
-meta def loc.apply (hyp_tac : expr → tactic unit) (goal_tac : tactic unit) (l : loc) : tactic unit :=
-do hs ← l.get_locals,
+section
+variables {m : Type → Type} [monad_tactic m]
+
+meta def loc.apply (hyp_tac : expr → m unit) (goal_tac : m unit) (l : loc) : m unit :=
+do hs ← monad_lift l.get_locals,
    hs.mmap' hyp_tac,
    if l.include_goal then goal_tac else pure ()
 
-meta def loc.try_apply (hyp_tac : expr → tactic unit) (goal_tac : tactic unit) (l : loc) : tactic unit :=
-do hs ← l.get_locals,
+meta def loc.try_apply (hyp_tac : expr → m unit) (goal_tac : m unit) (l : loc) : m unit :=
+do hs ← monad_lift l.get_locals,
    let hts := hs.map hyp_tac,
    tactic.try_lst $ if l.include_goal then hts ++ [goal_tac] else hts
+end
 
 /-- Use `desc` as the interactive description of `p`. -/
 meta def with_desc {α : Type} (desc : format) (p : parser α) : parser α := p

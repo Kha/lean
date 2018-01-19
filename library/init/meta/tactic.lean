@@ -38,15 +38,6 @@ meta instance : has_to_string tactic_state :=
 
 @[reducible] meta def tactic := interaction_monad tactic_state
 
-namespace tactic
-  export interaction_monad (hiding failed fail)
-  meta def failed {α : Type} : tactic α := interaction_monad.failed
-  meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
-  interaction_monad.fail msg
-end tactic
-
-open tactic
-
 infixl ` >>=[tactic] `:2 := @bind tactic _ _ _
 infixl ` >>[tactic] `:2  := @has_bind.and_then _ _ tactic _
 
@@ -55,10 +46,28 @@ meta instance : alternative tactic :=
   orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
 
+/-- A tactic-like monad -/
+meta class monad_tactic (m : Type → Type) extends
+  monad_fail m, monad_except (interaction_monad_error tactic_state) m,
+  has_monad_lift_t tactic m, has_scope_impure m :=
+-- cannot be extended directly because it shares a superclass with monad_fail
+[to_alternative : alternative m]
+
+attribute [instance] monad_tactic.to_alternative
+
+/- note: has_coe_t instead of has_coe because the instance for tactic could
+   loop otherwise -/
+meta instance coe_monad_tactic {α m} [monad_tactic m] : has_coe_t (tactic α) (m α) :=
+⟨monad_lift⟩
+
+meta instance : monad_tactic tactic :=
+monad_tactic.mk infer_instance infer_instance infer_instance infer_instance
+
 namespace tactic
 variables {α : Type}
+variables {m : Type → Type} [monad_tactic m]
 
-meta def try_core (t : tactic α) : tactic (option α) :=
+meta def try_core (t : m α) : m (option α) :=
 optional t
 
 meta def skip : tactic unit :=
@@ -67,29 +76,38 @@ pure ()
 meta def try (t : tactic α) : tactic unit :=
 try_core t >>[tactic] skip
 
-meta def try_lst : list (tactic unit) → tactic unit
-| []            := failed
-| (tac :: tacs) := monad_except.orelse' (tac >> try (try_lst tacs)) (try_lst tacs)
+/-- Try to run all tactics in order. Succeed if any tactic succeeds, or else fail
+    with the first error. -/
+meta def try_lst : list (m unit) → m unit
+| []            := failure
+| (tac :: tacs) := monad_except.orelse' (tac >> optional (try_lst tacs) >> pure ())
+                                        (try_lst tacs)
 
-meta def fail_if_success {α : Type} (t : tactic α) : tactic unit :=
+meta def failed {α : Type} : tactic α := interaction_monad.failed
+meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
+interaction_monad.fail msg
+
+open tactic
+
+meta def fail_if_success {α : Type} (t : m α) : m unit :=
 do (some _) ← try_core t | skip,
    fail "fail_if_success combinator failed, given tactic succeeded"
 
-meta def success_if_fail {α : Type} (t : tactic α) : tactic unit :=
+meta def success_if_fail {α : Type} (t : m α) : m unit :=
 fail_if_success t
 
 open nat
 /-- (iterate_at_most n t): repeat the given tactic at most n times or until t fails -/
-meta def iterate_at_most : nat → tactic unit → tactic unit
+meta def iterate_at_most : nat → m unit → m unit
 | 0        t := skip
 | (succ n) t := (do t, iterate_at_most n t) <|> skip
 
 /-- (iterate_exactly n t) : execute t n times -/
-meta def iterate_exactly : nat → tactic unit → tactic unit
+meta def iterate_exactly : nat → m unit → m unit
 | 0        t := skip
 | (succ n) t := do t, iterate_exactly n t
 
-meta def iterate : tactic unit → tactic unit :=
+meta def iterate : m unit → m unit :=
 iterate_at_most 100000
 
 meta def returnopt (e : option α) : tactic α :=
@@ -174,6 +192,7 @@ meta instance {α} (a : α) : has_to_tactic_format (reflected a) :=
 end
 
 namespace tactic
+variables {m : Type → Type} [monad_tactic m]
 open tactic_state
 
 meta def get_env : tactic environment :=
@@ -474,19 +493,6 @@ meta constant sleep (msecs : nat) : tactic unit
 meta constant type_check (e : expr) (md := semireducible) : tactic unit
 open list nat
 
-/-- Goals can be tagged using a list of names. -/
-def tag : Type := list name
-
-/-- Enable/disable goal tagging -/
-meta constant enable_tags (b : bool) : tactic unit
-/-- Return tt iff goal tagging is enabled. -/
-meta constant tags_enabled : tactic bool
-/-- Tag goal `g` with tag `t`. It does nothing is goal tagging is disabled.
-    Remark: `set_goal g []` removes the tag -/
-meta constant set_tag (g : expr) (t : tag) : tactic unit
-/-- Return tag associated with `g`. Return `[]` if there is no tag. -/
-meta constant get_tag (g : expr) : tactic tag
-
 meta def induction' (h : expr) (ns : list name := []) (rec : option name := none) (md := semireducible) : tactic unit :=
 induction h ns rec md >> return ()
 
@@ -642,11 +648,11 @@ format_result >>= trace
 meta def rexact (e : expr) : tactic unit :=
 exact e reducible
 
-meta def any_hyp_aux {α : Type} (f : expr → tactic α) : list expr → tactic α
+meta def any_hyp_aux {α : Type} (f : expr → m α) : list expr → m α
 | []        := failed
 | (h :: hs) := f h <|> any_hyp_aux hs
 
-meta def any_hyp {α : Type} (f : expr → tactic α) : tactic α :=
+meta def any_hyp {α : Type} (f : expr → m α) : m α :=
 local_context >>= any_hyp_aux f
 
 /-- `find_same_type t es` tries to find in es an expression with type definitionally equal to t -/
@@ -721,10 +727,10 @@ do ng ← num_goals,
 meta def rotate : nat → tactic unit :=
 rotate_left
 
-private meta def repeat_aux (t : tactic unit) : list expr → list expr → tactic unit
+private meta def repeat_aux (t : m unit) : list expr → list expr → m unit
 | []      r := set_goals r.reverse
 | (g::gs) r := do
-  ok ← try_core (set_goals [g] >> t),
+  ok ← optional (set_goals [g] >> t),
   match ok with
   | none := repeat_aux gs (g::r)
   | _    := do
@@ -736,7 +742,7 @@ private meta def repeat_aux (t : tactic unit) : list expr → list expr → tact
     the tactic is applied recursively to all the generated subgoals until it eventually fails.
     The recursion stops in a subgoal when the tactic has failed to make progress.
     The tactic `repeat` never fails. -/
-meta def repeat (t : tactic unit) : tactic unit :=
+meta def repeat (t : m unit) : m unit :=
 do gs ← get_goals, repeat_aux t gs []
 
 /-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
@@ -746,7 +752,7 @@ meta def first {α : Type} : list (tactic α) → tactic α
 | (t::ts) := t <|> first ts
 
 /-- Applies the given tactic to the main goal and fails if it is not solved. -/
-meta def solve1 (tac : tactic unit) : tactic unit :=
+meta def solve1 (tac : m unit) : m unit :=
 do gs ← get_goals,
    match gs with
    | []      := fail "solve1 tactic failed, there isn't any goal left to focus"
@@ -779,7 +785,7 @@ private meta def focus_aux : list (tactic unit) → list expr → list expr → 
 meta def focus (ts : list (tactic unit)) : tactic unit :=
 do gs ← get_goals, focus_aux ts gs []
 
-meta def focus1 {α} (tac : tactic α) : tactic α :=
+meta def focus1 {α} (tac : m α) : m α :=
 do g::gs ← get_goals,
    match gs with
    | [] := tac
@@ -791,7 +797,7 @@ do g::gs ← get_goals,
       return a
    end
 
-private meta def all_goals_core (tac : tactic unit) : list expr → list expr → tactic unit
+private meta def all_goals_core (tac : m unit) : list expr → list expr → m unit
 | []        ac := set_goals ac
 | (g :: gs) ac :=
   mcond (is_assigned g) (all_goals_core gs ac) $
@@ -801,22 +807,22 @@ private meta def all_goals_core (tac : tactic unit) : list expr → list expr �
        all_goals_core gs (ac ++ new_gs)
 
 /-- Apply the given tactic to all goals. -/
-meta def all_goals (tac : tactic unit) : tactic unit :=
+meta def all_goals (tac : m unit) : m unit :=
 do gs ← get_goals,
    all_goals_core tac gs []
 
-private meta def any_goals_core (tac : tactic unit) : list expr → list expr → bool → tactic unit
+private meta def any_goals_core (tac : m unit) : list expr → list expr → bool → m unit
 | []        ac progress := guard progress >> set_goals ac
 | (g :: gs) ac progress :=
   mcond (is_assigned g) (any_goals_core gs ac progress) $
     do set_goals [g],
-       succeeded ← try_core tac,
+       succeeded ← optional tac,
        new_gs    ← get_goals,
        any_goals_core gs (ac ++ new_gs) (succeeded.is_some || progress)
 
 /-- Apply the given tactic to any goal where it succeeds. The tactic succeeds only if
    tac succeeds for at least one goal. -/
-meta def any_goals (tac : tactic unit) : tactic unit :=
+meta def any_goals (tac : m unit) : m unit :=
 do gs ← get_goals,
    any_goals_core tac gs [] ff
 
@@ -1100,10 +1106,10 @@ private meta def mk_aux_decl_name : option name → tactic name
 | none          := new_aux_decl_name
 | (some suffix) := do p ← decl_name, return $ p ++ suffix
 
-meta def abstract (tac : tactic unit) (suffix : option name := none) (zeta_reduce := tt) : tactic unit :=
+meta def abstract (tac : m unit) (suffix : option name := none) (zeta_reduce := tt) : m unit :=
 do fail_if_no_goals,
    gs ← get_goals,
-   type ← if zeta_reduce then target >>= zeta else target,
+   type ← if zeta_reduce then target >>= ↑zeta else target,
    is_lemma ← is_prop type,
    m ← mk_meta_var type,
    set_goals [m],
@@ -1137,7 +1143,7 @@ do ns  ← open_namespaces,
     long running tactics. -/
 meta def try_for {α} (max : nat) (tac : tactic α) : tactic α :=
 do some r ← scope_impure_opt (λ α, _root_.try_for max) tac
-     | mk_exception "try_for tactic failed, timeout" none,
+     | interaction_monad.mk_exception "try_for tactic failed, timeout" none,
    pure r
 
 meta def updateex_env (f : environment → exceptional environment) : tactic unit :=
@@ -1175,20 +1181,6 @@ do h_type ← infer_type h,
 
 meta def main_goal : tactic expr :=
 do g::gs ← get_goals, return g
-
-/- Goal tagging support -/
-meta def with_enable_tags {α : Type} (t : tactic α) (b := tt) : tactic α :=
-do old ← tags_enabled,
-   enable_tags b,
-   r ← t,
-   enable_tags old,
-   return r
-
-meta def get_main_tag : tactic tag :=
-main_goal >>= get_tag
-
-meta def set_main_tag (t : tag) : tactic unit :=
-do g ← main_goal, set_tag g t
 
 meta def subst (h : expr) : tactic unit :=
 (do guard h.is_local_constant,
