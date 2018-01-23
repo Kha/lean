@@ -29,6 +29,9 @@ Author: Leonardo de Moura
 #include "frontends/lean/decl_util.h"
 #include "frontends/lean/pp.h"
 #include "frontends/lean/builtin_exprs.h"
+#include "util/sexpr/option_declarations.h"
+
+#define LEAN_PARSER_DEFAULT_TACTIC_NAMESPACE "tactic"
 
 /* The auto quotation currently supports two classes of tactics: tactic and smt_tactic.
    To add a new class Tac, we have to
@@ -53,6 +56,12 @@ Author: Leonardo de Moura
    TODO(Leo): improve the "recipe" above. It is too ad hoc.
 */
 namespace lean {
+static name * g_parser_default_tactic_namespace = nullptr;
+
+static name get_parser_default_tactic_namespace(options const & opts) {
+    return opts.get_string(*g_parser_default_tactic_namespace, LEAN_PARSER_DEFAULT_TACTIC_NAMESPACE);
+}
+
 static expr mk_tactic_step(parser & p, expr tac, pos_info const & pos, name const & tac_class) {
     if (tac.get_tag() == nulltag)
         tac = p.save_pos(tac, pos);
@@ -135,11 +144,15 @@ static optional<name> is_interactive_tactic(parser & p, name const & tac_class) 
     id = get_interactive_tactic_full_name(tac_class, id);
     if (p.env().find(id))
         return optional<name>(id);
-    else
-        return optional<name>();
+    // fall back to tactic.interactive
+    id = get_interactive_tactic_full_name(get_tactic_name(), id);
+    if (p.env().find(id))
+        return optional<name>(id);
+    return optional<name>();
 }
 
-static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token, name tac_class, bool use_istep);
+static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token, name tac_class,
+                                  bool use_istep, bool parse_tac_class = false);
 
 static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, bool use_istep) {
     auto pos = p.pos();
@@ -152,7 +165,9 @@ static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, 
     }
 }
 
-static optional<name> is_itactic(expr const & type) {
+static optional<name> is_itactic(expr type) {
+    // `itactic` may be parameterized by a monad
+    type = get_app_fn(type);
     if (!is_constant(type))
         return optional<name>();
     name const & n = const_name(type);
@@ -455,7 +470,7 @@ struct parse_begin_end_block_fn {
         return ::lean::parse_tactic(m_p, m_tac_class, m_use_istep);
     }
 
-    expr operator()(pos_info const & start_pos, name const & end_token) {
+    expr operator()(pos_info const & start_pos, name const & end_token, bool parse_tac_class) {
         auto sync = [&] {
             while (!m_p.curr_is_token(get_comma_tk()) && !m_p.curr_is_token(end_token) &&
                     !m_p.curr_is_token(get_semicolon_tk()) && !m_p.curr_is_token(get_orelse_tk())) {
@@ -468,17 +483,14 @@ struct parse_begin_end_block_fn {
         };
 
         m_p.next();
-        name new_tac_class = m_tac_class;
-        if (m_tac_class == get_tactic_name())
-            new_tac_class = parse_tactic_class(m_p, m_tac_class);
+        if (parse_tac_class)
+            m_tac_class = parse_tactic_class(m_p, get_parser_default_tactic_namespace(m_p.get_options()));
         optional<expr> cfg;
-        bool is_ext_tactic_class = m_tac_class == get_tactic_name() && new_tac_class != get_tactic_name();
-        if (is_ext_tactic_class && m_p.curr_is_token(get_with_tk())) {
+        if (m_p.curr_is_token(get_with_tk())) {
             m_p.next();
             cfg = m_p.parse_expr();
             m_p.check_token_next(get_comma_tk(), "invalid begin [...] with cfg, ... end block, ',' expected");
         }
-        m_tac_class = new_tac_class;
         buffer<expr> to_concat;
         to_concat.push_back(mk_tactic_save_info(m_p, start_pos, m_tac_class));
         while (!m_p.curr_is_token(end_token)) {
@@ -509,9 +521,7 @@ struct parse_begin_end_block_fn {
             ex.report_goal_pos(end_pos);
             throw;
         }
-        if (!is_ext_tactic_class) {
-            return r;
-        } else if (cfg) {
+        if (cfg) {
             return copy_tag(r, mk_app(mk_constant(name(m_tac_class, "execute_with")), *cfg, r));
         } else {
             return copy_tag(r, mk_app(mk_constant(name(m_tac_class, "execute")), r));
@@ -519,8 +529,9 @@ struct parse_begin_end_block_fn {
     }
 };
 
-static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token, name tac_class, bool use_istep) {
-    return parse_begin_end_block_fn(p, tac_class, use_istep)(start_pos, end_token);
+static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token, name tac_class,
+                                  bool use_istep, bool parse_tac_class) {
+    return parse_begin_end_block_fn(p, tac_class, use_istep)(start_pos, end_token, parse_tac_class);
 }
 
 expr parse_begin_end_expr_core(parser & p, pos_info const & pos, name const & end_token) {
@@ -528,7 +539,8 @@ expr parse_begin_end_expr_core(parser & p, pos_info const & pos, name const & en
     meta_definition_scope scope2;
     p.clear_expr_locals();
     bool use_istep = true;
-    expr tac = parse_begin_end_block(p, pos, end_token, get_tactic_name(), use_istep);
+    expr tac = parse_begin_end_block(p, pos, end_token, get_parser_default_tactic_namespace(p.get_options()),
+                                     use_istep, /* parse_tac_class */ true);
     return copy_tag(tac, mk_by(tac));
 }
 
@@ -551,9 +563,10 @@ expr parse_by(parser & p, unsigned, expr const *, pos_info const & pos) {
     p.clear_expr_locals();
     auto tac_pos = p.pos();
     try {
-        bool use_istep    = true;
-        expr tac  = parse_tactic(p, get_tactic_name(), use_istep);
-        expr type = mk_tactic_unit(get_tactic_name());
+        bool use_istep = true;
+        name tac_class = get_parser_default_tactic_namespace(p.get_options());
+        expr tac  = parse_tactic(p, tac_class, use_istep);
+        expr type = mk_tactic_unit(tac_class);
         expr r    = p.save_pos(mk_typed_expr(type, tac), tac_pos);
         return p.save_pos(mk_by(r), pos);
     } catch (break_at_pos_exception & ex) {
@@ -588,7 +601,7 @@ static void erase_quoted_terms_pos_info(parser & p, expr const & e) {
 }
 
 expr parse_interactive_tactic_block(parser & p, unsigned, expr const *, pos_info const & pos) {
-    name const & tac_class = get_tactic_name();
+    name const & tac_class = get_parser_default_tactic_namespace(p.get_options());
     bool use_istep    = false;
     expr r = parse_tactic(p, tac_class, use_istep);
     erase_quoted_terms_pos_info(p, r);
@@ -603,8 +616,12 @@ expr parse_interactive_tactic_block(parser & p, unsigned, expr const *, pos_info
 }
 
 void initialize_tactic_notation() {
+    g_parser_default_tactic_namespace = new name({"parser", "default_tactic_namespace"});
+    register_string_option(*g_parser_default_tactic_namespace, LEAN_PARSER_DEFAULT_TACTIC_NAMESPACE,
+                           "(parser) default tactic namespace to use for interactive tactic scripts");
 }
 
 void finalize_tactic_notation() {
+    delete g_parser_default_tactic_namespace;
 }
 }

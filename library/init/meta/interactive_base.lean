@@ -157,7 +157,9 @@ private meta def parser_desc_aux : expr → tactic (list format)
 meta def param_desc : expr → tactic format
 | `(parse %%p) := join <$> parser_desc_aux p
 | `(opt_param %%t ._) := (++ "?") <$> pp t
-| e := if is_constant e ∧ (const_name e).components.ilast = `itactic
+| e :=
+  let f := get_app_fn e in
+  if is_constant f ∧ (const_name f).components.ilast = `itactic
   then return $ to_fmt "{ tactic }"
   else paren <$> pp e
 

@@ -80,6 +80,10 @@ in match q with
 | _                          := i_to_expr q
 end
 
+/-- entry point for interactive use -/
+meta def execute : tactic unit → tactic unit :=
+id
+
 namespace interactive
 section
 open interactive interactive.types expr
@@ -1392,7 +1396,7 @@ meta def mk_inj_eq : tactic unit :=
   apply propext,
   apply iff.intro,
   { tactic.apply_inj_lemma },
-  { intro _, admit } --try { cases_matching* _ ∧ _ }, refl <|> { congr; { assumption <|> subst_vars } } }
+  { intro _, try { cases_matching* _ ∧ _ }, refl <|> { congr; { assumption <|> subst_vars } } }
 ]
 end tactic
 

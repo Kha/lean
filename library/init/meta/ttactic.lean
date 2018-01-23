@@ -1,23 +1,38 @@
-namespace ttactic
-open tactic
+/-
+Copyright (c) 2017 Microsoft Corporation. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Leonardo de Moura, Sebastian Ullrich
+-/
+prelude
+import init.meta.interactive
+
+open lean
+open lean.parser
+
+local postfix `?`:9001 := optional
+local postfix *:9001 := many
 
 /-- Goals can be tagged using a list of names. -/
-def tag : Type := list name
+def ttactic.tag : Type := list name
 
-meta structure tag_info :=
+meta structure ttactic.tag_info :=
 (tags_enabled : bool)
-(tags         : expr_map (list name))
+(tags         : expr_map ttactic.tag)
 
 /-- A 'tagged tactic' -/
 @[reducible] meta def ttactic :=
-state_t tag_info tactic
+state_t _root_.ttactic.tag_info tactic
+
+namespace ttactic
+open tactic
 
 meta instance : monad_tactic ttactic :=
 _root_.monad_tactic.mk infer_instance infer_instance infer_instance infer_instance
 
 section
-parameters {m n : Type → Type} [monad_tactic m] [monad_state_lift tag_info n m] [monad n]
+parameters {m n : Type → Type}
 include n
+variables [monad_tactic m] [monad_state_lift tag_info n m] [monad n]
 
 /-- Enable/disable goal tagging -/
 meta def enable_tags (b : bool) : m punit :=
@@ -187,6 +202,8 @@ match pre with
      find_tagged_goal_aux pre
 end
 
+open expr
+
 private meta def find_case (goals : list expr) (ty : name) (idx : nat) (num_indices : nat) : option expr → expr → option (expr × expr)
 | case e := if e.has_meta_var then match e with
   | (mvar _ _ _)    :=
@@ -227,6 +244,9 @@ private meta def find_case (goals : list expr) (ty : name) (idx : nat) (num_indi
 private meta def rename_lams : expr → list name → m unit
 | (lam n _ _ e) (n'::ns) := (rename n n' >> rename_lams e ns) <|> rename_lams e (n'::ns)
 | _             _        := skip
+
+open interactive
+open interactive.types
 
 /--
 Focuses on the `induction`/`cases`/`with_cases` subgoal corresponding to the given tag prefix, optionally renaming introduced locals.
@@ -277,4 +297,8 @@ do g   ← find_tagged_goal pre,
      | ff := failed
      end
    end
+end
+end interactive
 end ttactic
+
+set_option parser.default_tactic_namespace "ttactic"

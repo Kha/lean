@@ -78,8 +78,12 @@ meta instance : has_monad_lift tactic smt_tactic :=
 meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 ⟨monad_lift⟩
 
+meta instance : monad_tactic smt_tactic :=
+monad_tactic.mk infer_instance infer_instance infer_instance infer_instance
+
 namespace smt_tactic
-open tactic (transparency)
+open tactic
+
 meta constant intros                     : smt_tactic unit
 meta constant intron                     : nat  → smt_tactic unit
 meta constant intro_lst                  : list name → smt_tactic unit
@@ -143,19 +147,6 @@ tactic.fail msg
 
 meta def try {α : Type} (t : smt_tactic α) : smt_tactic unit :=
 optional t >> pure ()
-
-/-- `iterate_at_most n t`: repeat the given tactic at most n times or until t fails -/
-meta def iterate_at_most : nat → smt_tactic unit → smt_tactic unit
-| 0     t := return ()
-| (n+1) t := (do t, iterate_at_most n t) <|> return ()
-
-/-- `iterate_exactly n t` : execute t n times -/
-meta def iterate_exactly : nat → smt_tactic unit → smt_tactic unit
-| 0     t := return ()
-| (n+1) t := do t, iterate_exactly n t
-
-meta def iterate : smt_tactic unit → smt_tactic unit :=
-iterate_at_most 100000
 
 meta def eblast : smt_tactic unit :=
 iterate (ematch >> try close)
@@ -393,7 +384,7 @@ open smt_tactic
 
 meta def using_smt {α} (t : smt_tactic α) (cfg : smt_config := {}) : tactic α :=
 do ss ← smt_state.mk cfg,
-   (a, _) ← (do a ← t, iterate close, return a).run ss,
+   (a, _) ← (do a ← t, tactic.iterate close, return a).run ss,
    return a
 
 meta def using_smt_with {α} (cfg : smt_config) (t : smt_tactic α) : tactic α :=
