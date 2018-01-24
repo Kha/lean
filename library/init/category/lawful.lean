@@ -32,7 +32,7 @@ class is_lawful_applicative (f : Type u → Type v) [applicative f] extends is_l
 (seq_pure        : ∀ {α β : Type u} (g : f (α → β)) (x : α), g <*> pure x = (λ g : α → β, g x) <$> g)
 (seq_assoc       : ∀ {α β γ : Type u} (x : f α) (g : f (α → β)) (h : f (β → γ)), h <*> (g <*> x) = (@comp α β γ <$> h) <*> g <*> x)
 -- default functor law
-(comp_map := begin intros; simp [(pure_seq_eq_map _ _).symm, seq_assoc, map_pure, seq_pure] end)
+(comp_map := by intros; simp [(pure_seq_eq_map _ _).symm, seq_assoc, map_pure, seq_pure])
 
 export is_lawful_applicative (seq_left_eq seq_right_eq pure_seq_eq_map map_pure seq_pure seq_assoc)
 attribute [simp] map_pure seq_pure

@@ -66,6 +66,7 @@ run_cmd script_check_id `eq_rec_heq
 run_cmd script_check_id `eq_true_intro
 run_cmd script_check_id `eq_false_intro
 run_cmd script_check_id `eq_self_iff_true
+run_cmd script_check_id `execute_interactive_tactic
 run_cmd script_check_id `expr
 run_cmd script_check_id `expr.subst
 run_cmd script_check_id `format
@@ -201,6 +202,11 @@ run_cmd script_check_id `list.cons
 run_cmd script_check_id `match_failed
 run_cmd script_check_id `monad
 run_cmd script_check_id `monad_fail
+run_cmd script_check_id `monad_interactive_tactic
+run_cmd script_check_id `monad_interactive_tactic.istep
+run_cmd script_check_id `monad_interactive_tactic.step
+run_cmd script_check_id `monad_interactive_tactic.save_info
+run_cmd script_check_id `monad_interactive_tactic.solve1
 run_cmd script_check_id `monoid
 run_cmd script_check_id `mul_one
 run_cmd script_check_id `mul_zero
@@ -296,6 +302,8 @@ run_cmd script_check_id `not_of_eq_false
 run_cmd script_check_id `of_eq_true
 run_cmd script_check_id `of_iff_true
 run_cmd script_check_id `opt_param
+run_cmd script_check_id `option.none
+run_cmd script_check_id `option.some
 run_cmd script_check_id `or
 run_cmd script_check_id `out_param
 run_cmd script_check_id `punit

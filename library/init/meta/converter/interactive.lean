@@ -13,17 +13,14 @@ meta def save_info (p : pos) : conv unit :=
 do s ← tactic.get,
    tactic.save_info_thunk p (λ _, s.to_format tt)
 
-meta def step {α : Type} (c : conv α) : conv unit :=
-c >> return ()
-
-meta def istep {α : Type} (line0 col0 line col : nat) (c : conv α) : conv unit :=
-tactic.istep line0 col0 line col c
-
 meta def execute (c : conv unit) : tactic unit :=
 c
 
 meta def solve1 (c : conv unit) : conv unit :=
 tactic.solve1 $ c >> tactic.try (tactic.any_goals tactic.reflexivity)
+
+meta instance : monad_interactive_tactic empty conv :=
+{ type_name := `conv, execute := λ cfg, execute, solve1 := solve1, ..conv.monad_tactic }
 
 namespace interactive
 open lean

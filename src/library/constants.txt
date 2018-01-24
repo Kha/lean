@@ -61,6 +61,7 @@ eq_rec_heq
 eq_true_intro
 eq_false_intro
 eq_self_iff_true
+execute_interactive_tactic
 expr
 expr.subst
 format
@@ -196,6 +197,11 @@ list.cons
 match_failed
 monad
 monad_fail
+monad_interactive_tactic
+monad_interactive_tactic.istep
+monad_interactive_tactic.step
+monad_interactive_tactic.save_info
+monad_interactive_tactic.solve1
 monoid
 mul_one
 mul_zero
@@ -291,6 +297,8 @@ not_of_eq_false
 of_eq_true
 of_iff_true
 opt_param
+option.none
+option.some
 or
 out_param
 punit

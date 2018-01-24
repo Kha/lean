@@ -4,6 +4,8 @@ state_t (name_map nat) tactic
 meta instance (α : Type) : has_coe (tactic α) (mytac α) :=
 ⟨monad_lift⟩
 
+meta instance : monad_tactic mytac := {}
+
 namespace mytac
 
 meta def step {α : Type} (t : mytac α) : mytac unit :=
@@ -25,6 +27,10 @@ do v ← get,
    tactic.save_info_thunk p
       (λ _, to_fmt "Custom state: " ++ to_fmt v ++ format.line ++
                 tactic_state.to_format s)
+
+meta instance : monad_interactive_tactic empty mytac :=
+{ type_name := `mytac, istep := @istep, save_info := @save_info,
+  execute := λ cfg, execute, ..mytac.monad_tactic }
 
 namespace interactive
 meta def intros : mytac unit :=

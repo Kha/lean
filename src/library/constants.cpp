@@ -66,6 +66,7 @@ name const * g_eq_rec_heq = nullptr;
 name const * g_eq_true_intro = nullptr;
 name const * g_eq_false_intro = nullptr;
 name const * g_eq_self_iff_true = nullptr;
+name const * g_execute_interactive_tactic = nullptr;
 name const * g_expr = nullptr;
 name const * g_expr_subst = nullptr;
 name const * g_format = nullptr;
@@ -201,6 +202,11 @@ name const * g_list_cons = nullptr;
 name const * g_match_failed = nullptr;
 name const * g_monad = nullptr;
 name const * g_monad_fail = nullptr;
+name const * g_monad_interactive_tactic = nullptr;
+name const * g_monad_interactive_tactic_istep = nullptr;
+name const * g_monad_interactive_tactic_step = nullptr;
+name const * g_monad_interactive_tactic_save_info = nullptr;
+name const * g_monad_interactive_tactic_solve1 = nullptr;
 name const * g_monoid = nullptr;
 name const * g_mul_one = nullptr;
 name const * g_mul_zero = nullptr;
@@ -296,6 +302,8 @@ name const * g_not_of_eq_false = nullptr;
 name const * g_of_eq_true = nullptr;
 name const * g_of_iff_true = nullptr;
 name const * g_opt_param = nullptr;
+name const * g_option_none = nullptr;
+name const * g_option_some = nullptr;
 name const * g_or = nullptr;
 name const * g_out_param = nullptr;
 name const * g_punit = nullptr;
@@ -452,6 +460,7 @@ void initialize_constants() {
     g_eq_true_intro = new name{"eq_true_intro"};
     g_eq_false_intro = new name{"eq_false_intro"};
     g_eq_self_iff_true = new name{"eq_self_iff_true"};
+    g_execute_interactive_tactic = new name{"execute_interactive_tactic"};
     g_expr = new name{"expr"};
     g_expr_subst = new name{"expr", "subst"};
     g_format = new name{"format"};
@@ -587,6 +596,11 @@ void initialize_constants() {
     g_match_failed = new name{"match_failed"};
     g_monad = new name{"monad"};
     g_monad_fail = new name{"monad_fail"};
+    g_monad_interactive_tactic = new name{"monad_interactive_tactic"};
+    g_monad_interactive_tactic_istep = new name{"monad_interactive_tactic", "istep"};
+    g_monad_interactive_tactic_step = new name{"monad_interactive_tactic", "step"};
+    g_monad_interactive_tactic_save_info = new name{"monad_interactive_tactic", "save_info"};
+    g_monad_interactive_tactic_solve1 = new name{"monad_interactive_tactic", "solve1"};
     g_monoid = new name{"monoid"};
     g_mul_one = new name{"mul_one"};
     g_mul_zero = new name{"mul_zero"};
@@ -682,6 +696,8 @@ void initialize_constants() {
     g_of_eq_true = new name{"of_eq_true"};
     g_of_iff_true = new name{"of_iff_true"};
     g_opt_param = new name{"opt_param"};
+    g_option_none = new name{"option", "none"};
+    g_option_some = new name{"option", "some"};
     g_or = new name{"or"};
     g_out_param = new name{"out_param"};
     g_punit = new name{"punit"};
@@ -839,6 +855,7 @@ void finalize_constants() {
     delete g_eq_true_intro;
     delete g_eq_false_intro;
     delete g_eq_self_iff_true;
+    delete g_execute_interactive_tactic;
     delete g_expr;
     delete g_expr_subst;
     delete g_format;
@@ -974,6 +991,11 @@ void finalize_constants() {
     delete g_match_failed;
     delete g_monad;
     delete g_monad_fail;
+    delete g_monad_interactive_tactic;
+    delete g_monad_interactive_tactic_istep;
+    delete g_monad_interactive_tactic_step;
+    delete g_monad_interactive_tactic_save_info;
+    delete g_monad_interactive_tactic_solve1;
     delete g_monoid;
     delete g_mul_one;
     delete g_mul_zero;
@@ -1069,6 +1091,8 @@ void finalize_constants() {
     delete g_of_eq_true;
     delete g_of_iff_true;
     delete g_opt_param;
+    delete g_option_none;
+    delete g_option_some;
     delete g_or;
     delete g_out_param;
     delete g_punit;
@@ -1225,6 +1249,7 @@ name const & get_eq_rec_heq_name() { return *g_eq_rec_heq; }
 name const & get_eq_true_intro_name() { return *g_eq_true_intro; }
 name const & get_eq_false_intro_name() { return *g_eq_false_intro; }
 name const & get_eq_self_iff_true_name() { return *g_eq_self_iff_true; }
+name const & get_execute_interactive_tactic_name() { return *g_execute_interactive_tactic; }
 name const & get_expr_name() { return *g_expr; }
 name const & get_expr_subst_name() { return *g_expr_subst; }
 name const & get_format_name() { return *g_format; }
@@ -1360,6 +1385,11 @@ name const & get_list_cons_name() { return *g_list_cons; }
 name const & get_match_failed_name() { return *g_match_failed; }
 name const & get_monad_name() { return *g_monad; }
 name const & get_monad_fail_name() { return *g_monad_fail; }
+name const & get_monad_interactive_tactic_name() { return *g_monad_interactive_tactic; }
+name const & get_monad_interactive_tactic_istep_name() { return *g_monad_interactive_tactic_istep; }
+name const & get_monad_interactive_tactic_step_name() { return *g_monad_interactive_tactic_step; }
+name const & get_monad_interactive_tactic_save_info_name() { return *g_monad_interactive_tactic_save_info; }
+name const & get_monad_interactive_tactic_solve1_name() { return *g_monad_interactive_tactic_solve1; }
 name const & get_monoid_name() { return *g_monoid; }
 name const & get_mul_one_name() { return *g_mul_one; }
 name const & get_mul_zero_name() { return *g_mul_zero; }
@@ -1455,6 +1485,8 @@ name const & get_not_of_eq_false_name() { return *g_not_of_eq_false; }
 name const & get_of_eq_true_name() { return *g_of_eq_true; }
 name const & get_of_iff_true_name() { return *g_of_iff_true; }
 name const & get_opt_param_name() { return *g_opt_param; }
+name const & get_option_none_name() { return *g_option_none; }
+name const & get_option_some_name() { return *g_option_some; }
 name const & get_or_name() { return *g_or; }
 name const & get_out_param_name() { return *g_out_param; }
 name const & get_punit_name() { return *g_punit; }

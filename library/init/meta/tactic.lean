@@ -38,15 +38,6 @@ meta instance : has_to_string tactic_state :=
 
 @[reducible] meta def tactic := interaction_monad tactic_state
 
-namespace tactic
-  export interaction_monad (hiding failed fail)
-  meta def failed {α : Type} : tactic α := interaction_monad.failed
-  meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
-  interaction_monad.fail msg
-end tactic
-
-open tactic
-
 infixl ` >>=[tactic] `:2 := @bind tactic _ _ _
 infixl ` >>[tactic] `:2  := @has_bind.and_then _ _ tactic _
 
@@ -54,6 +45,22 @@ meta instance : alternative tactic :=
 { failure := @interaction_monad.failed _,
   orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
+
+/-- A tactic-like monad -/
+meta class monad_tactic (m : Type → Type) extends
+  monad_fail m, monad_except (interaction_monad_error tactic_state) m,
+  has_monad_lift_t tactic m, has_scope_impure m :=
+-- cannot be extended directly because it shares a superclass with monad_fail
+[to_alternative : alternative m]
+
+attribute [instance] monad_tactic.to_alternative
+
+/- note: has_coe_t instead of has_coe because the instance for tactic could
+   loop otherwise -/
+meta instance coe_monad_tactic {α m} [monad_tactic m] : has_coe_t (tactic α) (m α) :=
+⟨monad_lift⟩
+
+meta instance : monad_tactic tactic := {}
 
 namespace tactic
 variables {α : Type}
@@ -66,6 +73,10 @@ pure ()
 
 meta def try (t : tactic α) : tactic unit :=
 try_core t >>[tactic] skip
+
+meta def failed {α : Type} : tactic α := interaction_monad.failed
+meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
+interaction_monad.fail msg
 
 meta def try_lst : list (tactic unit) → tactic unit
 | []            := failed
@@ -175,6 +186,7 @@ end
 
 namespace tactic
 open tactic_state
+variables {m : Type → Type} [monad_tactic m]
 
 meta def get_env : tactic environment :=
 env <$> get
@@ -495,8 +507,8 @@ meta def cleanup : tactic unit :=
 get_goals >>= set_goals
 
 /-- Auxiliary definition used to implement begin ... end blocks -/
-meta def step {α : Type} (t : tactic α) : tactic unit :=
-t >>[tactic] cleanup
+meta def step {α : Type} (t : m α) : m unit :=
+t >> cleanup
 
 meta def istep {α : Type} (line0 col0 : ℕ) (line col : ℕ) (t : tactic α) : tactic unit :=
 interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step t))
@@ -746,7 +758,7 @@ meta def first {α : Type} : list (tactic α) → tactic α
 | (t::ts) := t <|> first ts
 
 /-- Applies the given tactic to the main goal and fails if it is not solved. -/
-meta def solve1 (tac : tactic unit) : tactic unit :=
+meta def solve1 (tac : m unit) : m unit :=
 do gs ← get_goals,
    match gs with
    | []      := fail "solve1 tactic failed, there isn't any goal left to focus"
@@ -1137,7 +1149,7 @@ do ns  ← open_namespaces,
     long running tactics. -/
 meta def try_for {α} (max : nat) (tac : tactic α) : tactic α :=
 do some r ← scope_impure_opt (λ α, _root_.try_for max) tac
-     | mk_exception "try_for tactic failed, timeout" none,
+     | interaction_monad.mk_exception "try_for tactic failed, timeout" none,
    pure r
 
 meta def updateex_env (f : environment → exceptional environment) : tactic unit :=

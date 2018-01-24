@@ -16,6 +16,10 @@ local postfix `?`:9001 := optional
 local postfix *:9001 := many
 
 namespace tactic
+
+meta instance : monad_interactive_tactic empty tactic :=
+{ type_name := `tactic, execute := λ cfg, id, ..tactic.monad_tactic }
+
 /- allows metavars -/
 meta def i_to_expr (q : pexpr) : tactic expr :=
 to_expr q tt

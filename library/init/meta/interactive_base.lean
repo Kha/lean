@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Leonardo de Moura
+Authors: Leonardo de Moura, Sebastian Ullrich
 -/
 prelude
 import init.data.option.basic
@@ -12,6 +12,27 @@ open lean.parser
 
 local postfix `?`:9001 := optional
 local postfix *:9001 := many
+
+meta class monad_interactive_tactic (config : out_param Type) (m : Type → Type) extends monad_tactic m :=
+(type_name : name)
+-- emitted around each interactive step
+(step {α : Type} (t : m α) : m unit := tactic.step t)
+/- Like step, but should scope trace messages at the given position,
+   and ensure that the exception position is after pos0.
+   This function is called instead of step inside of unquoted begin-end blocks. -/
+(istep {α : Type} (line0 col0 line col : nat) (tac : m α) : m unit :=
+   interaction_monad_error.clamp_pos line0 line col $
+     scope_impure (λ β, @scope_trace _ line col) (step tac))
+-- focus and solve the main goal using `t`, or fail
+(solve1 (t : m unit) : m unit := tactic.solve1 t)
+-- should call `tactic.save_info_thunk` with a representation of the current state
+(save_info {} (p : pos) : m unit := tactic.save_info p)
+(execute (cfg : option config) (t : m unit) : tactic unit)
+
+-- note: explicit `m`
+meta def execute_interactive_tactic {config : Type} (m : Type → Type) [monad_interactive_tactic config m]
+  (cfg : option config) (t : m unit) : tactic unit :=
+monad_interactive_tactic.execute cfg t
 
 namespace interactive
 /-- (parse p) as the parameter type of an interactive tactic will instruct the Lean parser

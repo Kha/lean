@@ -21,14 +21,12 @@ iterate close
 meta def step {α : Type} (tac : smt_tactic α) : smt_tactic unit :=
 tac >> solve_goals
 
-meta def istep {α : Type} (line0 col0 line col : nat) (tac : smt_tactic α) : smt_tactic unit :=
-interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step tac))
+meta def execute (cfg : option smt_config) (tac : smt_tactic unit) : tactic unit :=
+using_smt tac (cfg.get_or_else {})
 
-meta def execute (tac : smt_tactic unit) : tactic unit :=
-using_smt tac
-
-meta def execute_with (cfg : smt_config) (tac : smt_tactic unit) : tactic unit :=
-using_smt tac cfg
+meta instance : monad_interactive_tactic smt_config smt_tactic :=
+{ type_name := `smt_tactic, step := @step, save_info := @save_info,
+  solve1 := @solve1, execute := execute, ..smt_tactic.monad_tactic }
 
 namespace interactive
 open lean.parser

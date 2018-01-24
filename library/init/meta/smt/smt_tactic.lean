@@ -78,6 +78,8 @@ meta instance : has_monad_lift tactic smt_tactic :=
 meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 ⟨monad_lift⟩
 
+meta instance : monad_tactic smt_tactic := {}
+
 namespace smt_tactic
 open tactic (transparency)
 meta constant intros                     : smt_tactic unit
