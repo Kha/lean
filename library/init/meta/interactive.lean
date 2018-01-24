@@ -80,6 +80,10 @@ in match q with
 | _                          := i_to_expr q
 end
 
+/-- entry point for interactive use -/
+meta def execute : tactic unit → tactic unit :=
+id
+
 namespace interactive
 open interactive interactive.types expr
 

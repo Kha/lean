@@ -29,6 +29,9 @@ Author: Leonardo de Moura
 #include "frontends/lean/decl_util.h"
 #include "frontends/lean/pp.h"
 #include "frontends/lean/builtin_exprs.h"
+#include "util/sexpr/option_declarations.h"
+
+#define LEAN_PARSER_DEFAULT_TACTIC_TYPE "tactic"
 
 /* The auto quotation currently supports two classes of tactics: tactic and smt_tactic.
    To add a new class Tac, we have to
@@ -53,6 +56,12 @@ Author: Leonardo de Moura
    TODO(Leo): improve the "recipe" above. It is too ad hoc.
 */
 namespace lean {
+static name * g_parser_default_tactic_type = nullptr;
+
+static name get_parser_default_tactic_type(options const & opts) {
+    return opts.get_string(*g_parser_default_tactic_type, LEAN_PARSER_DEFAULT_TACTIC_TYPE);
+}
+
 static expr mk_tactic_step(parser & p, expr tac, pos_info const & pos, name const & tac_class) {
     if (tac.get_tag() == nulltag)
         tac = p.save_pos(tac, pos);
@@ -152,7 +161,9 @@ static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, 
     }
 }
 
-static optional<name> is_itactic(expr const & type) {
+static optional<name> is_itactic(expr type) {
+    // `itactic` may be parameterized by a monad
+    type = get_app_fn(type);
     if (!is_constant(type))
         return optional<name>();
     name const & n = const_name(type);
@@ -400,7 +411,7 @@ static optional<name> is_tactic_class(environment const & env, name const & n) {
     }
 }
 
-static name parse_tactic_class(parser & p, name tac_class) {
+static optional<name> parse_tactic_class(parser & p) {
     if (p.curr_is_token(get_lbracket_tk())) {
         p.next();
         auto id_pos = p.pos();
@@ -409,12 +420,12 @@ static name parse_tactic_class(parser & p, name tac_class) {
         if (!new_class) {
             p.maybe_throw_error({sstream() << "invalid 'begin [" << id << "] ...end' block, "
                                << "'" << id << "' is not a valid tactic class", id_pos});
-            return tac_class;
+            return optional<name>();
         }
         p.check_token_next(get_rbracket_tk(), "invalid 'begin [...] ... end block', ']' expected");
-        return *new_class;
+        return new_class;
     } else {
-        return tac_class;
+        return optional<name>();
     }
 }
 
@@ -468,17 +479,15 @@ struct parse_begin_end_block_fn {
         };
 
         m_p.next();
-        name new_tac_class = m_tac_class;
-        if (m_tac_class == get_tactic_name())
-            new_tac_class = parse_tactic_class(m_p, m_tac_class);
+        optional<name> new_tac_class = parse_tactic_class(m_p);
         optional<expr> cfg;
-        bool is_ext_tactic_class = m_tac_class == get_tactic_name() && new_tac_class != get_tactic_name();
-        if (is_ext_tactic_class && m_p.curr_is_token(get_with_tk())) {
+        if (new_tac_class && m_p.curr_is_token(get_with_tk())) {
             m_p.next();
             cfg = m_p.parse_expr();
             m_p.check_token_next(get_comma_tk(), "invalid begin [...] with cfg, ... end block, ',' expected");
         }
-        m_tac_class = new_tac_class;
+        if (new_tac_class)
+            m_tac_class = *new_tac_class;
         buffer<expr> to_concat;
         to_concat.push_back(mk_tactic_save_info(m_p, start_pos, m_tac_class));
         while (!m_p.curr_is_token(end_token)) {
@@ -509,7 +518,7 @@ struct parse_begin_end_block_fn {
             ex.report_goal_pos(end_pos);
             throw;
         }
-        if (!is_ext_tactic_class) {
+        if (!new_tac_class) {
             return r;
         } else if (cfg) {
             return copy_tag(r, mk_app(mk_constant(name(m_tac_class, "execute_with")), *cfg, r));
@@ -551,11 +560,18 @@ expr parse_by(parser & p, unsigned, expr const *, pos_info const & pos) {
     p.clear_expr_locals();
     auto tac_pos = p.pos();
     try {
-        bool use_istep    = true;
-        expr tac  = parse_tactic(p, get_tactic_name(), use_istep);
-        expr type = mk_tactic_unit(get_tactic_name());
-        expr r    = p.save_pos(mk_typed_expr(type, tac), tac_pos);
-        return p.save_pos(mk_by(r), pos);
+        bool use_istep = true;
+        name tac_class = get_parser_default_tactic_type(p.get_options());
+        expr tac  = parse_tactic(p, tac_class, use_istep);
+        expr type = mk_tactic_unit(tac_class);
+        tac = p.save_pos(mk_typed_expr(type, tac), tac_pos);
+        // execute `tac`: convert to `tactic unit`
+        tac = p.save_pos(mk_app(mk_constant(get_execute_interactive_tactic_name()),
+                                mk_constant(tac_class),
+                                mk_constant(get_option_none_name()), // no config
+                                tac),
+                         tac_pos);
+        return p.save_pos(mk_by(tac), pos);
     } catch (break_at_pos_exception & ex) {
         ex.report_goal_pos(tac_pos);
         throw ex;
@@ -588,23 +604,20 @@ static void erase_quoted_terms_pos_info(parser & p, expr const & e) {
 }
 
 expr parse_interactive_tactic_block(parser & p, unsigned, expr const *, pos_info const & pos) {
-    name const & tac_class = get_tactic_name();
+    name const & tac_class = get_parser_default_tactic_type(p.get_options());
     bool use_istep    = false;
-    expr r = parse_tactic(p, tac_class, use_istep);
+    expr r = parse_begin_end_block(p, pos, get_rbracket_tk(), some(tac_class), use_istep);
     erase_quoted_terms_pos_info(p, r);
-    while (p.curr_is_token(get_comma_tk())) {
-        p.next();
-        expr next = parse_tactic(p, tac_class, use_istep);
-        erase_quoted_terms_pos_info(p, next);
-        r = p.mk_app({p.save_pos(mk_constant(get_has_bind_and_then_name()), pos), r, next}, pos);
-    }
-    p.check_token_next(get_rbracket_tk(), "invalid auto-quote tactic block, ']' expected");
     return r;
 }
 
 void initialize_tactic_notation() {
+    g_parser_default_tactic_type = new name({"parser", "default_tactic_type"});
+    register_string_option(*g_parser_default_tactic_type, LEAN_PARSER_DEFAULT_TACTIC_TYPE,
+                           "(parser) default tactic type to use for interactive tactic scripts");
 }
 
 void finalize_tactic_notation() {
+    delete g_parser_default_tactic_type;
 }
 }
