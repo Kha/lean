@@ -204,6 +204,7 @@ run_cmd script_check_id `monad
 run_cmd script_check_id `monad_fail
 run_cmd script_check_id `monad_interactive_tactic
 run_cmd script_check_id `monad_interactive_tactic.istep
+run_cmd script_check_id `monad_interactive_tactic.memoize
 run_cmd script_check_id `monad_interactive_tactic.step
 run_cmd script_check_id `monad_interactive_tactic.save_info
 run_cmd script_check_id `monad_interactive_tactic.solve1

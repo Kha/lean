@@ -204,6 +204,7 @@ name const * g_monad = nullptr;
 name const * g_monad_fail = nullptr;
 name const * g_monad_interactive_tactic = nullptr;
 name const * g_monad_interactive_tactic_istep = nullptr;
+name const * g_monad_interactive_tactic_memoize = nullptr;
 name const * g_monad_interactive_tactic_step = nullptr;
 name const * g_monad_interactive_tactic_save_info = nullptr;
 name const * g_monad_interactive_tactic_solve1 = nullptr;
@@ -598,6 +599,7 @@ void initialize_constants() {
     g_monad_fail = new name{"monad_fail"};
     g_monad_interactive_tactic = new name{"monad_interactive_tactic"};
     g_monad_interactive_tactic_istep = new name{"monad_interactive_tactic", "istep"};
+    g_monad_interactive_tactic_memoize = new name{"monad_interactive_tactic", "memoize"};
     g_monad_interactive_tactic_step = new name{"monad_interactive_tactic", "step"};
     g_monad_interactive_tactic_save_info = new name{"monad_interactive_tactic", "save_info"};
     g_monad_interactive_tactic_solve1 = new name{"monad_interactive_tactic", "solve1"};
@@ -993,6 +995,7 @@ void finalize_constants() {
     delete g_monad_fail;
     delete g_monad_interactive_tactic;
     delete g_monad_interactive_tactic_istep;
+    delete g_monad_interactive_tactic_memoize;
     delete g_monad_interactive_tactic_step;
     delete g_monad_interactive_tactic_save_info;
     delete g_monad_interactive_tactic_solve1;
@@ -1387,6 +1390,7 @@ name const & get_monad_name() { return *g_monad; }
 name const & get_monad_fail_name() { return *g_monad_fail; }
 name const & get_monad_interactive_tactic_name() { return *g_monad_interactive_tactic; }
 name const & get_monad_interactive_tactic_istep_name() { return *g_monad_interactive_tactic_istep; }
+name const & get_monad_interactive_tactic_memoize_name() { return *g_monad_interactive_tactic_memoize; }
 name const & get_monad_interactive_tactic_step_name() { return *g_monad_interactive_tactic_step; }
 name const & get_monad_interactive_tactic_save_info_name() { return *g_monad_interactive_tactic_save_info; }
 name const & get_monad_interactive_tactic_solve1_name() { return *g_monad_interactive_tactic_solve1; }

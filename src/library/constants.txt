@@ -199,6 +199,7 @@ monad
 monad_fail
 monad_interactive_tactic
 monad_interactive_tactic.istep
+monad_interactive_tactic.memoize
 monad_interactive_tactic.step
 monad_interactive_tactic.save_info
 monad_interactive_tactic.solve1

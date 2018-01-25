@@ -868,8 +868,8 @@ tactic.skip
 /--
 `solve1 { t }` applies the tactic `t` to the main goal and fails if it is not solved.
 -/
-meta def solve1 : itactic → tactic unit :=
-tactic.solve1
+meta def solve1 (t : itactic) : tactic unit :=
+tactic.solve1 t
 
 /--
 `abstract id { t }` tries to use tactic `t` to solve the main goal. If it succeeds, it abstracts the goal as an independent definition or theorem with name `id`. If `id` is omitted, a name is generated automatically.

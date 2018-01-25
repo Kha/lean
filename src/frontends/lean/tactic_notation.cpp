@@ -53,10 +53,14 @@ static expr mk_tactic_istep(parser & p, expr tac, pos_info const & pos0, pos_inf
         return mk_tactic_step(p, tac, pos);
     if (tac.get_tag() == nulltag)
         tac = p.save_pos(tac, pos);
-    return p.save_pos(mk_app({mk_constant(get_monad_interactive_tactic_istep_name()),
+    // compute a fingerprint of the pre-execution state: the tactic's preterm and the environment fingerprint
+    uint64 h = hash(static_cast<uint64>(tac.hash()), get_fingerprint(p.env()));
+    expr memoize = mk_app(mk_constant(get_monad_interactive_tactic_memoize_name()), mk_prenum(mpz(h)), tac);
+    expr istep = mk_app({mk_constant(get_monad_interactive_tactic_istep_name()),
             mk_prenum(mpz(pos0.first)), mk_prenum(mpz(pos0.second)),
             mk_prenum(mpz(pos.first)), mk_prenum(mpz(pos.second)),
-            tac}), pos);
+            p.save_pos(memoize, pos)});
+    return p.save_pos(istep, pos);
 }
 
 static expr mk_tactic_step(parser & p, expr tac, pos_info const & pos0, pos_info const & pos, bool use_istep) {

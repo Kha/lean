@@ -23,6 +23,10 @@ meta class monad_interactive_tactic (config : out_param Type) (m : Type → Type
 (istep {α : Type} (line0 col0 line col : nat) (tac : m α) : m unit :=
    interaction_monad_error.clamp_pos line0 line col $
      scope_impure (λ β, @scope_trace _ line col) (step tac))
+/- emitted around each interactive step, may cache the output of `t`
+   and reuse it if both `fingerprint` (representing the pre-execution state)
+   and the fingerprint of the `tactic_state` match -/
+(memoize {α : Type} (fingerprint : nat) (t : m α) : m unit := t >> pure ())
 -- focus and solve the main goal using `t`, or fail
 (solve1 (t : m unit) : m unit := tactic.solve1 t)
 -- should call `tactic.save_info_thunk` with a representation of the current state

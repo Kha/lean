@@ -206,6 +206,7 @@ name const & get_monad_name();
 name const & get_monad_fail_name();
 name const & get_monad_interactive_tactic_name();
 name const & get_monad_interactive_tactic_istep_name();
+name const & get_monad_interactive_tactic_memoize_name();
 name const & get_monad_interactive_tactic_step_name();
 name const & get_monad_interactive_tactic_save_info_name();
 name const & get_monad_interactive_tactic_solve1_name();
