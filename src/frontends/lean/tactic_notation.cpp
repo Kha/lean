@@ -144,14 +144,15 @@ static optional<name> is_tactic_class(environment const & env, name const & n) {
 }
 
 static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token,
-                                  optional<name> tac_class = optional<name>(), bool use_istep = true);
+                                  optional<name> tac_class = optional<name>(), bool use_istep = true,
+                                  bool use_solve1 = false);
 
-static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, bool use_istep) {
+static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, bool use_istep, bool use_solve1) {
     auto pos = p.pos();
     if (p.curr_is_token(get_lcurly_tk())) {
-        return parse_begin_end_block(p, pos, get_rcurly_tk(), some(tac_class), use_istep);
+        return parse_begin_end_block(p, pos, get_rcurly_tk(), some(tac_class), use_istep, use_solve1);
     } else if (p.curr_is_token(get_begin_tk())) {
-        return parse_begin_end_block(p, pos, get_end_tk(), some(tac_class), use_istep);
+        return parse_begin_end_block(p, pos, get_end_tk(), some(tac_class), use_istep, use_solve1);
     } else {
         return p.parser_error_or_expr({"invalid nested auto-quote tactic, '{' or 'begin' expected", pos});
     }
@@ -171,11 +172,13 @@ static expr parse_interactive_tactic(parser & p, name const & decl_name, name co
                     if (is_app_of(arg_type, get_interactive_parse_name())) {
                         parser::quote_scope scope(p, true);
                         args.push_back(parse_interactive_param(p, arg_type));
-                    } else if (is_app_of(arg_type, get_interactive_parse_tactic_name(), 1)) {
+                    } else if (is_app_of(arg_type, get_interactive_parse_tactic_name(), 2)) {
+                        bool use_solve1 = app_arg(arg_type) == mk_bool_tt();
+                        expr tac_type   = app_arg(app_fn(arg_type));
                         auto new_tac_class = tac_class;
-                        if (is_constant(app_arg(arg_type)))
-                            new_tac_class = const_name(app_arg(arg_type));
-                        auto tac = parse_nested_interactive_tactic(p, new_tac_class, use_istep);
+                        if (is_constant(tac_type))
+                            new_tac_class = const_name(tac_type);
+                        auto tac = parse_nested_interactive_tactic(p, new_tac_class, use_istep, use_solve1);
                         args.push_back(tac);
                     } else {
                         break;
@@ -449,7 +452,7 @@ struct parse_begin_end_block_fn {
         return ::lean::parse_tactic(m_p, *m_tac_class, m_use_istep);
     }
 
-    expr operator()(pos_info const & start_pos, name const & end_token) {
+    expr operator()(pos_info const & start_pos, name const & end_token, bool use_solve1) {
         auto sync = [&] {
             while (!m_p.curr_is_token(get_comma_tk()) && !m_p.curr_is_token(end_token) &&
                     !m_p.curr_is_token(get_semicolon_tk()) && !m_p.curr_is_token(get_orelse_tk())) {
@@ -498,6 +501,8 @@ struct parse_begin_end_block_fn {
         auto end_pos = m_p.pos();
         expr r = concat(to_concat, start_pos);
         r = concat(r, mk_tactic_save_info(m_p, end_pos), end_pos);
+        if (use_solve1)
+            r = mk_tactic_solve1(m_p, r, start_pos, end_pos, m_use_istep);
         try {
             m_p.next();
         } catch (break_at_pos_exception & ex) {
@@ -519,9 +524,9 @@ struct parse_begin_end_block_fn {
     }
 };
 
-static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token,
-                                  optional<name> tac_class, bool use_istep) {
-    return parse_begin_end_block_fn(p, tac_class, use_istep)(start_pos, end_token);
+static expr parse_begin_end_block(parser & p, pos_info const & start_pos, name const & end_token, optional <name> tac_class,
+                                  bool use_istep, bool use_solve1) {
+    return parse_begin_end_block_fn(p, tac_class, use_istep)(start_pos, end_token, use_solve1);
 }
 
 expr parse_begin_end_expr_core(parser & p, pos_info const & pos, name const & end_token) {

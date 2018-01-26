@@ -60,8 +60,10 @@ namespace interactive
 
 /-- (parse_tactic m) as the parameter type of an interactive tactic will instruct the Lean parser
     to parse an interactive tactic block `'{' (tac : m unit) '}'` and to pass the parsed tactic
-    as an argument to the outer tactic. -/
-@[reducible] meta def parse_tactic (m : Type → Type) : Type := m unit
+    as an argument to the outer tactic.
+    If `use_solve1` is tt, the parsed tactic is wrapped in calls to
+    `monad_interactive_tactic.solve1/istep` with the correct position information. -/
+@[reducible] meta def parse_tactic (m : Type → Type) (use_solve1 := ff) : Type := m unit
 
 inductive loc : Type
 | wildcard : loc

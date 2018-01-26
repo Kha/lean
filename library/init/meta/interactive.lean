@@ -680,7 +680,7 @@ begin
 end
 ```
 -/
-meta def case (pre : parse ident_*) (ids : parse $ (tk ":" *> ident_*)?) (tac : parse_tactic tactic) : tactic unit :=
+meta def case (pre : parse ident_*) (ids : parse $ (tk ":" *> ident_*)?) (tac : parse_tactic tactic tt) : tactic unit :=
 do g   ← find_tagged_goal pre,
    tag ← get_tag g,
    let ids := ids.get_or_else [],
@@ -691,7 +691,7 @@ do g   ← find_tagged_goal pre,
       set_goals $ g :: gs.filter (≠ g),
       intro_lst ids,
       when (m < n) $ intron (n - m),
-      solve1 tac
+      tac
    | none   :=
      match is_case_simple_tag tag with
      | tt :=
@@ -713,7 +713,7 @@ do g   ← find_tagged_goal pre,
           gs        ← get_goals,
           set_goals $ g :: gs.filter (≠ g),
           rename_lams case ids,
-          solve1 tac
+          tac
      | ff := failed
      end
    end
