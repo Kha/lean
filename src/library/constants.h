@@ -334,6 +334,7 @@ name const & get_real_has_le_name();
 name const & get_reflected_name();
 name const & get_reflected_subst_name();
 name const & get_repr_name();
+name const & get_resolve_interactive_tactic_name();
 name const & get_rfl_name();
 name const & get_right_distrib_name();
 name const & get_ring_name();

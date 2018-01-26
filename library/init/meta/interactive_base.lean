@@ -13,8 +13,16 @@ open lean.parser
 local postfix `?`:9001 := optional
 local postfix *:9001 := many
 
+meta def resolve_interactive_tactic_aux (tac_class_name tac_name : name) : tactic name :=
+do let full_n := tac_class_name <.> "interactive" ++ tac_name,
+   tactic.get_decl full_n >> pure full_n
+
 meta class monad_interactive_tactic (config : out_param Type) (m : Type → Type) extends monad_tactic m :=
 (type_name : name)
+-- used to resolve an interactive tactic name like `simp`
+(resolve_tactic (n : name) : tactic name :=
+  -- look up $m.interactive.$n, or else tactic.interactive.$n
+  resolve_interactive_tactic_aux type_name n <|> resolve_interactive_tactic_aux `tactic n)
 -- emitted around each interactive step
 (step {α : Type} (t : m α) : m unit := tactic.step t)
 /- Like step, but should scope trace messages at the given position,
@@ -37,6 +45,12 @@ meta class monad_interactive_tactic (config : out_param Type) (m : Type → Type
 meta def execute_interactive_tactic {config : Type} (m : Type → Type) [monad_interactive_tactic config m]
   (cfg : option config) (t : m unit) : tactic unit :=
 monad_interactive_tactic.execute cfg t
+
+meta def resolve_interactive_tactic (tac_type tac : name) : tactic name :=
+do let tac_type : pexpr := expr.const tac_type [],
+   e ← tactic.to_expr ```(monad_interactive_tactic.resolve_tactic %%tac_type),
+   t ← tactic.eval_expr (name → tactic name) e,
+   t tac
 
 namespace interactive
 /-- (parse p) as the parameter type of an interactive tactic will instruct the Lean parser

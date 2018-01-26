@@ -327,6 +327,7 @@ real.has_le
 reflected
 reflected.subst
 repr
+resolve_interactive_tactic
 rfl
 right_distrib
 ring

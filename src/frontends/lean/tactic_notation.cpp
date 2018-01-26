@@ -19,6 +19,7 @@ Author: Leonardo de Moura
 #include "library/vm/vm_format.h"
 #include "library/vm/vm_expr.h"
 #include "library/vm/vm_parser.h"
+#include "library/vm/vm_name.h"
 #include "library/tactic/elaborate.h"
 #include "library/tactic/tactic_evaluator.h"
 #include "frontends/lean/tokens.h"
@@ -90,8 +91,16 @@ static expr concat(parser & p, expr const & tac1, expr const & tac2, pos_info co
     return p.save_pos(mk_app(mk_constant(get_has_bind_seq_name()), tac1, tac2), pos);
 }
 
-name get_interactive_tactic_full_name(name const & tac_class, name const & tac) {
-    return name(tac_class, "interactive") + tac;
+optional<name> get_interactive_tactic_full_name(environment const & env, options const & opts, name const & tac_class,
+                                                name const & tac) {
+    vm_state S(env, opts);
+    tactic_state s = mk_tactic_state_for(env, opts, "_tactic_notation", local_context(), mk_true());
+    if (env.find(get_resolve_interactive_tactic_name())) {
+        auto r = S.invoke(get_resolve_interactive_tactic_name(), {to_obj(s), to_obj(tac), to_obj(tac_class)});
+        if (tactic::is_result_success(r))
+            return some(to_name(tactic::get_result_value(r)));
+    }
+    return optional<name>();
 }
 
 static bool is_curr_exact_shortcut(parser & p) {
@@ -110,11 +119,7 @@ static optional<name> is_interactive_tactic(parser & p, name const & tac_class) 
         default:
             return {};
     }
-    id = get_interactive_tactic_full_name(tac_class, id);
-    if (p.env().find(id))
-        return optional<name>(id);
-    else
-        return optional<name>();
+    return get_interactive_tactic_full_name(p.env(), p.get_options(), tac_class, id);
 }
 
 static optional<name> is_tactic_type(environment const & env, name const & n) {
@@ -281,8 +286,13 @@ struct parse_tactic_fn {
             }
         } else if (is_curr_exact_shortcut(m_p)) {
             expr arg = parse_qexpr();
-            r = m_p.mk_app(m_p.save_pos(mk_constant(get_interactive_tactic_full_name(m_tac_class, "exact")), pos), arg, pos);
-            if (m_use_istep) r = mk_tactic_istep(m_p, r, pos, pos);
+            if (auto exact_name = get_interactive_tactic_full_name(m_p.env(), m_p.get_options(), m_tac_class, "exact")) {
+                r = m_p.mk_app(m_p.save_pos(mk_constant(*exact_name), pos), arg, pos);
+                if (m_use_istep) r = mk_tactic_istep(m_p, r, pos, pos);
+            } else {
+                return m_p.parser_error_or_expr(parser_error("invalid interactive tactic, tactic type must support "
+                                                             "an 'exact' tactic.", pos));
+            }
         } else {
             r = m_p.parse_expr();
             if (m_use_istep) r = mk_tactic_istep(m_p, r, pos, pos);

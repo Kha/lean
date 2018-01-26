@@ -332,6 +332,7 @@ name const * g_real_has_le = nullptr;
 name const * g_reflected = nullptr;
 name const * g_reflected_subst = nullptr;
 name const * g_repr = nullptr;
+name const * g_resolve_interactive_tactic = nullptr;
 name const * g_rfl = nullptr;
 name const * g_right_distrib = nullptr;
 name const * g_ring = nullptr;
@@ -727,6 +728,7 @@ void initialize_constants() {
     g_reflected = new name{"reflected"};
     g_reflected_subst = new name{"reflected", "subst"};
     g_repr = new name{"repr"};
+    g_resolve_interactive_tactic = new name{"resolve_interactive_tactic"};
     g_rfl = new name{"rfl"};
     g_right_distrib = new name{"right_distrib"};
     g_ring = new name{"ring"};
@@ -1123,6 +1125,7 @@ void finalize_constants() {
     delete g_reflected;
     delete g_reflected_subst;
     delete g_repr;
+    delete g_resolve_interactive_tactic;
     delete g_rfl;
     delete g_right_distrib;
     delete g_ring;
@@ -1518,6 +1521,7 @@ name const & get_real_has_le_name() { return *g_real_has_le; }
 name const & get_reflected_name() { return *g_reflected; }
 name const & get_reflected_subst_name() { return *g_reflected_subst; }
 name const & get_repr_name() { return *g_repr; }
+name const & get_resolve_interactive_tactic_name() { return *g_resolve_interactive_tactic; }
 name const & get_rfl_name() { return *g_rfl; }
 name const & get_right_distrib_name() { return *g_right_distrib; }
 name const & get_ring_name() { return *g_ring; }

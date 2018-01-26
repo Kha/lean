@@ -143,9 +143,8 @@ void report_info(environment const & env, options const & opts, io_state const &
                     record["doc"] = it->get_description();
                 break;
             case break_at_pos_exception::token_context::interactive_tactic: {
-                auto n = get_interactive_tactic_full_name(e.m_token_info.m_param, e.m_token_info.m_token);
-                if (env.find(n)) {
-                    record = serialize_decl(e.m_token_info.m_token, n, env, opts);
+                if (auto n = get_interactive_tactic_full_name(env, opts, e.m_token_info.m_param, e.m_token_info.m_token)) {
+                    record = serialize_decl(e.m_token_info.m_token, *n, env, opts);
                     if (auto idx = e.m_token_info.m_tac_param_idx)
                         record["tactic_param_idx"] = *idx;
                     has_token_info = true;
