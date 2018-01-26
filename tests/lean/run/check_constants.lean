@@ -176,6 +176,7 @@ run_cmd script_check_id `int.zero_ne_neg_of_ne
 run_cmd script_check_id `int.decidable_linear_ordered_comm_group
 run_cmd script_check_id `interactive.param_desc
 run_cmd script_check_id `interactive.parse
+run_cmd script_check_id `interactive.parse_tactic
 run_cmd script_check_id `io_core
 run_cmd script_check_id `monad_io_impl
 run_cmd script_check_id `monad_io_terminal_impl

@@ -91,13 +91,6 @@ id
 namespace interactive
 open interactive interactive.types expr
 
-/--
-itactic: parse a nested "interactive" tactic. That is, parse
-  `{` tactic `}`
--/
-meta def itactic : Type :=
-tactic unit
-
 meta def propagate_tags (tac : tactic unit) : tactic unit :=
 do tag ← get_main_tag,
    if tag = [] then tac
@@ -442,7 +435,7 @@ end
 
 TODO(Leo): improve docstring
 -/
-meta def with_cases (t : itactic) : tactic unit :=
+meta def with_cases (t : parse_tactic tactic) : tactic unit :=
 with_enable_tags $ focus1 $ do
   input_hyp_uids ← collect_hyps_uids,
   t,
@@ -687,7 +680,7 @@ begin
 end
 ```
 -/
-meta def case (pre : parse ident_*) (ids : parse $ (tk ":" *> ident_*)?) (tac : itactic) : tactic unit :=
+meta def case (pre : parse ident_*) (ids : parse $ (tk ":" *> ident_*)?) (tac : parse_tactic tactic) : tactic unit :=
 do g   ← find_tagged_goal pre,
    tag ← get_tag g,
    let ids := ids.get_or_else [],
@@ -838,7 +831,7 @@ tactic.contradiction
 
 `iterate n { t }` applies `t` `n` times.
 -/
-meta def iterate (n : parse small_nat?) (t : itactic) : tactic unit :=
+meta def iterate (n : parse small_nat?) (t : parse_tactic tactic) : tactic unit :=
 match n with
 | none   := tactic.iterate t
 | some n := iterate_exactly n t
@@ -850,13 +843,13 @@ the tactic is applied recursively to all the generated subgoals until it eventua
 The recursion stops in a subgoal when the tactic has failed to make progress.
 The tactic `repeat { t }` never fails.
 -/
-meta def repeat : itactic → tactic unit :=
+meta def repeat : parse_tactic tactic → tactic unit :=
 tactic.repeat
 
 /--
 `try { t }` tries to apply tactic `t`, but succeeds whether or not `t` succeeds.
 -/
-meta def try : itactic → tactic unit :=
+meta def try : parse_tactic tactic → tactic unit :=
 tactic.try
 
 /--
@@ -868,31 +861,31 @@ tactic.skip
 /--
 `solve1 { t }` applies the tactic `t` to the main goal and fails if it is not solved.
 -/
-meta def solve1 (t : itactic) : tactic unit :=
+meta def solve1 (t : parse_tactic tactic) : tactic unit :=
 tactic.solve1 t
 
 /--
 `abstract id { t }` tries to use tactic `t` to solve the main goal. If it succeeds, it abstracts the goal as an independent definition or theorem with name `id`. If `id` is omitted, a name is generated automatically.
 -/
-meta def abstract (id : parse ident?) (tac : itactic) : tactic unit :=
+meta def abstract (id : parse ident?) (tac : parse_tactic tactic) : tactic unit :=
 tactic.abstract tac id
 
 /--
 `all_goals { t }` applies the tactic `t` to every goal, and succeeds if each application succeeds.
 -/
-meta def all_goals : itactic → tactic unit :=
+meta def all_goals : parse_tactic tactic → tactic unit :=
 tactic.all_goals
 
 /--
 `any_goals { t }` applies the tactic `t` to every goal, and succeeds if at least one application succeeds.
 -/
-meta def any_goals : itactic → tactic unit :=
+meta def any_goals : parse_tactic tactic → tactic unit :=
 tactic.any_goals
 
 /--
 `focus { t }` temporarily hides all goals other than the first, applies `t`, and then restores the other goals. It fails if there are no goals.
 -/
-meta def focus (tac : itactic) : tactic unit :=
+meta def focus (tac : parse_tactic tactic) : tactic unit :=
 tactic.focus1 tac
 
 private meta def assume_core (n : name) (ty : pexpr) :=
@@ -1435,13 +1428,13 @@ tactic.apply_auto_param
 /--
 Fails if the given tactic succeeds.
 -/
-meta def fail_if_success (tac : itactic) : tactic unit :=
+meta def fail_if_success (tac : parse_tactic tactic) : tactic unit :=
 tactic.fail_if_success tac
 
 /--
 Succeeds if the given tactic fails.
 -/
-meta def success_if_fail (tac : itactic) : tactic unit :=
+meta def success_if_fail (tac : parse_tactic tactic) : tactic unit :=
 tactic.success_if_fail tac
 
 meta def guard_expr_eq (t : expr) (p : parse $ tk ":=" *> texpr) : tactic unit :=

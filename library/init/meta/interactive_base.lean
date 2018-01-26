@@ -58,6 +58,11 @@ namespace interactive
     to the tactic. -/
 @[reducible] meta def parse {α : Type} [has_reflect α] (p : parser α) : Type := α
 
+/-- (parse_tactic m) as the parameter type of an interactive tactic will instruct the Lean parser
+    to parse an interactive tactic block `'{' (tac : m unit) '}'` and to pass the parsed tactic
+    as an argument to the outer tactic. -/
+@[reducible] meta def parse_tactic (m : Type → Type) : Type := m unit
+
 inductive loc : Type
 | wildcard : loc
 | ns       : list (option name) → loc
@@ -191,10 +196,9 @@ private meta def parser_desc_aux : expr → tactic (list format)
 
 meta def param_desc : expr → tactic format
 | `(parse %%p) := join <$> parser_desc_aux p
+| `(parse_tactic %%tac) := return $ to_fmt "{ tactic }"
 | `(opt_param %%t ._) := (++ "?") <$> pp t
-| e := if is_constant e ∧ (const_name e).components.ilast = `itactic
-  then return $ to_fmt "{ tactic }"
-  else paren <$> pp e
+| e := paren <$> pp e
 
 
 private meta constant parse_binders_core (rbp : ℕ) : parser (list pexpr)

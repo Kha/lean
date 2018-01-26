@@ -171,6 +171,7 @@ int.zero_ne_neg_of_ne
 int.decidable_linear_ordered_comm_group
 interactive.param_desc
 interactive.parse
+interactive.parse_tactic
 io_core
 monad_io_impl
 monad_io_terminal_impl

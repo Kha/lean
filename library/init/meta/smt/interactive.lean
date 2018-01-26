@@ -35,9 +35,6 @@ open interactive.types
 local postfix `?`:9001 := optional
 local postfix *:9001 := many
 
-meta def itactic : Type :=
-smt_tactic unit
-
 meta def intros : parse ident* → smt_tactic unit
 | [] := smt_tactic.intros
 | hs := smt_tactic.intro_lst hs
@@ -216,15 +213,15 @@ do hs ← add_hinst_lemmas_from_pexprs reducible ff l hinst_lemmas.mk,
    smt_tactic.ematch_using hs
 
 /-- Try the given tactic, and do nothing if it fails. -/
-meta def try (t : itactic) : smt_tactic unit :=
+meta def try (t : parse_tactic smt_tactic) : smt_tactic unit :=
 smt_tactic.try t
 
 /-- Keep applying the given tactic until it fails. -/
-meta def iterate (t : itactic) : smt_tactic unit :=
+meta def iterate (t : parse_tactic smt_tactic) : smt_tactic unit :=
 smt_tactic.iterate t
 
 /-- Apply the given tactic to all remaining goals. -/
-meta def all_goals (t : itactic) : smt_tactic unit :=
+meta def all_goals (t : parse_tactic smt_tactic) : smt_tactic unit :=
 smt_tactic.all_goals t
 
 meta def induction (p : parse tactic.interactive.cases_arg_p) (rec_name : parse using_ident) (ids : parse with_ident_list)

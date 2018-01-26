@@ -1,6 +1,6 @@
 namespace tactic.interactive
 
-meta def smt (tac : smt_tactic.interactive.itactic) : tactic unit :=
+meta def smt (tac : interactive.parse_tactic smt_tactic) : tactic unit :=
 solve1 $ using_smt $ tac
 
 end tactic.interactive

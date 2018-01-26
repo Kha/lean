@@ -157,24 +157,6 @@ static expr parse_nested_interactive_tactic(parser & p, name const & tac_class, 
     }
 }
 
-static optional<name> is_itactic(expr type) {
-    // `itactic` may be parameterized by a monad
-    type = get_app_fn(type);
-    if (!is_constant(type))
-        return optional<name>();
-    name const & n = const_name(type);
-    if (n.is_atomic() ||
-        !n.is_string() ||
-        strcmp(n.get_string(), "itactic") != 0)
-        return optional<name>();
-    name const & pre = n.get_prefix();
-    if (pre.is_atomic() ||
-        !pre.is_string() ||
-        strcmp(pre.get_string(), "interactive") != 0)
-        return optional<name>();
-    return optional<name>(pre.get_prefix());
-}
-
 static expr parse_interactive_tactic(parser & p, name const & decl_name, name const & tac_class, bool use_istep) {
     auto pos = p.pos();
     expr type     = p.env().get(decl_name).get_type();
@@ -189,8 +171,12 @@ static expr parse_interactive_tactic(parser & p, name const & decl_name, name co
                     if (is_app_of(arg_type, get_interactive_parse_name())) {
                         parser::quote_scope scope(p, true);
                         args.push_back(parse_interactive_param(p, arg_type));
-                    } else if (auto new_tac_class = is_itactic(arg_type)) {
-                        args.push_back(parse_nested_interactive_tactic(p, *new_tac_class, use_istep));
+                    } else if (is_app_of(arg_type, get_interactive_parse_tactic_name(), 1)) {
+                        auto new_tac_class = tac_class;
+                        if (is_constant(app_arg(arg_type)))
+                            new_tac_class = const_name(app_arg(arg_type));
+                        auto tac = parse_nested_interactive_tactic(p, new_tac_class, use_istep);
+                        args.push_back(tac);
                     } else {
                         break;
                     }
@@ -519,7 +505,13 @@ struct parse_begin_end_block_fn {
             throw;
         }
         if (old_tac_class == m_tac_class) {
-            return r;
+            /* Nested block with unchanged tactic type. We fix the type of `r` to
+             * avoid unification issues. For example, if `r` is a universe-polymorphic
+             * tactic of type `?m unit` and passed to `try : parse_tactic tactic -> tactic unit`,
+             * we would create the problematic unification problem `?m unit =?= parse_tactic tactic`.
+             * The typed_expr breaks this problem down into `?m unit =?= tactic unit` and
+             * `tactic unit = parse_tactic tactic`. */
+            return copy_tag(r, mk_typed_expr(mk_tactic_unit(*m_tac_class), r));
         } else {
             expr e_cfg = cfg ? mk_app(mk_constant(get_option_some_name()), *cfg) : mk_constant(get_option_none_name());
             return copy_tag(r, mk_app(mk_constant(get_execute_interactive_tactic_name()), mk_constant(*m_tac_class), e_cfg, r));
