@@ -29,6 +29,7 @@ public:
     class checkpoint;
 private:
     friend class validate_and_collect_lhs_mvars;
+    friend class visit_structure_instance_fn;
     typedef std::vector<pair<expr, expr>> to_check_sorts;
     enum class arg_mask {
         AllExplicit /* @ annotation */,
