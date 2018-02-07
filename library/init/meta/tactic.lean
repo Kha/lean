@@ -46,7 +46,7 @@ meta instance : alternative tactic :=
   orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
 
-meta class goal_type (α : Type) extends has_to_tactic_format α :=
+meta class goal_type (α : Type) :=
 [decidable_eq : decidable_eq α]
 (get_target : α → expr)
 (from_target {} : expr → α)
@@ -512,19 +512,6 @@ meta constant sleep (msecs : nat) : tactic unit
     Fails if `e` is not type correct. -/
 meta constant type_check (e : expr) (md := semireducible) : tactic unit
 open list nat
-
-/-- Goals can be tagged using a list of names. -/
-def tag : Type := list name
-
-/-- Enable/disable goal tagging -/
-meta constant enable_tags (b : bool) : tactic unit
-/-- Return tt iff goal tagging is enabled. -/
-meta constant tags_enabled : tactic bool
-/-- Tag goal `g` with tag `t`. It does nothing is goal tagging is disabled.
-    Remark: `set_goal g []` removes the tag -/
-meta constant set_tag (g : expr) (t : tag) : tactic unit
-/-- Return tag associated with `g`. Return `[]` if there is no tag. -/
-meta constant get_tag (g : expr) : tactic tag
 
 meta def induction' (h : expr) (ns : list name := []) (rec : option name := none) (md := semireducible) : tactic unit :=
 induction h ns rec md >> return ()
@@ -1216,20 +1203,6 @@ do h_type ← infer_type h,
 
 meta def main_goal : tactic expr :=
 do g::gs ← get_goals, return g
-
-/- Goal tagging support -/
-meta def with_enable_tags {α : Type} (t : tactic α) (b := tt) : tactic α :=
-do old ← tags_enabled,
-   enable_tags b,
-   r ← t,
-   enable_tags old,
-   return r
-
-meta def get_main_tag : tactic tag :=
-main_goal >>= get_tag
-
-meta def set_main_tag (t : tag) : tactic unit :=
-do g ← main_goal, set_tag g t
 
 meta def subst (h : expr) : tactic unit :=
 (do guard h.is_local_constant,

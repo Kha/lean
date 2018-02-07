@@ -32,6 +32,11 @@ state_t _root_.ttactic.tag_info tactic
 namespace ttactic
 open tactic
 
+meta instance : goal_type ttactic.goal := {
+  get_target := goal.target,
+  from_target := λ t, ⟨[], t⟩
+}
+
 meta instance : monad_tactic ttactic := {
   goal_ty := ttactic.goal,
   get_goals := do {
