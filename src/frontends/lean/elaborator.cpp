@@ -2813,7 +2813,7 @@ private:
 protected:
     expr visit_app(expr const & e) override {
         expr e2 = replace_visitor::visit_app(e);
-        if (has_metavar(e2)) {
+        if (has_expr_metavar(e2)) {
             if (auto e3 = m_ctx.reduce_projection(e2))
                 return *e3;
         }

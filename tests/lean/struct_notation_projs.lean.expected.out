@@ -1,0 +1,22 @@
+struct_notation_projs.lean:3:35: error: invalid structure value { ... }, field 'pure_bind' was not provided
+struct_notation_projs.lean:3:35: error: invalid structure value { ... }, field 'bind_assoc' was not provided
+struct_notation_projs.lean:3:35: error: exact tactic failed, type mismatch, given expression has type
+  ?m_2 = ?m_2
+but is expected to have type
+  x >>= pure ∘ f = f <$> x
+state:
+3 goals
+α β : Type ?,
+f : α → β,
+x : list α
+⊢ x >>= pure ∘ f = f <$> x
+
+α β : Type ?,
+f : α → β,
+x : list α
+⊢ Sort ?
+
+α β : Type ?,
+f : α → β,
+x : list α
+⊢ ?m_1
