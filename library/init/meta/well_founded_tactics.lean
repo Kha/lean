@@ -50,9 +50,9 @@ meta def process_lex : tactic unit → tactic unit
      let b := t.app_arg in
      do (a₁, a₂) ← is_psigma_mk a,
         (b₁, b₂) ← is_psigma_mk b,
-        (is_def_eq a₁ b₁ >> `[apply psigma.lex.right] >> process_lex tac)
+        (is_def_eq a₁ b₁ >> `[[tactic] apply psigma.lex.right] >> process_lex tac)
         <|>
-        (`[apply psigma.lex.left] >> tac)
+        (`[[tactic] apply psigma.lex.left] >> tac)
   else
      tac
 
@@ -81,7 +81,7 @@ do
   S ← target >>= collect_sizeof_lemmas,
   (simp_target S >> unfold_sizeof_loop)
   <|>
-  try `[simp]
+  try `[[tactic] simp]
 
 meta def unfold_sizeof : tactic unit :=
 unfold_sizeof_measure >> unfold_sizeof_loop
@@ -146,7 +146,7 @@ do `(%%lhs < %%rhs) ← target,
      target_pr  ← to_expr ``(congr (congr_arg (<) %%lhs_pr) %%rhs_pr),
      new_target ← to_expr ``(%%new_lhs < %%new_rhs),
      replace_target new_target target_pr,
-     `[apply nat.add_lt_add_left] <|> `[apply nat.lt_add_of_zero_lt_left]
+     `[[tactic] apply nat.add_lt_add_left] <|> `[[tactic] apply nat.lt_add_of_zero_lt_left]
 
 meta def check_target_is_value_lt : tactic unit :=
 do `(%%lhs < %%rhs) ← target,
@@ -155,14 +155,14 @@ do `(%%lhs < %%rhs) ← target,
 meta def trivial_nat_lt : tactic unit :=
 comp_val
 <|>
-`[apply nat.zero_lt_one_add]
+`[[tactic] apply nat.zero_lt_one_add]
 <|>
 assumption
 <|>
 (do check_target_is_value_lt,
-    (`[apply nat.lt_add_right] >> trivial_nat_lt)
+    (`[[tactic] apply nat.lt_add_right] >> trivial_nat_lt)
     <|>
-    (`[apply nat.lt_add_left] >> trivial_nat_lt))
+    (`[[tactic] apply nat.lt_add_left] >> trivial_nat_lt))
 <|>
 failed
 end simple_dec_tac

@@ -341,7 +341,7 @@ begin have := not_lt_of_lt h, simp [*] end
 
 local attribute [simp] ite_eq_of_not_lt
 
-private meta def simp_fi : tactic unit :=
+private meta def simp_fi : ttactic unit :=
 `[simp [find, ins, *, cmp_using]]
 
 lemma find_ins_of_eqv [is_strict_weak_order α lt] {x y : α} {t : rbnode α} (he : x ≈[lt] y) : ∀ {lo hi} (hs : is_searchable lt t lo hi) (hlt₁ : lift lt lo (some x)) (hlt₂ : lift lt (some x) hi), find lt (ins lt t x) y = some x :=
@@ -433,7 +433,7 @@ begin
     case is_gt  { apply weak_trichotomous lt l_val x; intros; simp [*] } }
 end
 
-meta def ins_ne_leaf_tac := `[apply ins_ne_leaf]
+meta def ins_ne_leaf_tac := `[[tactic] apply ins_ne_leaf]
 
 lemma find_balance1_node_lt {t s x y lo hi} (hlt : lt y x)
                             (ht : is_searchable lt t lo (some x))

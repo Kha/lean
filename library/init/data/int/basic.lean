@@ -390,7 +390,7 @@ protected meta def transfer_core : tactic unit := do
     `int.rel_eq, `int.rel_zero, `int.rel_one,
     `int.rel_add, `int.rel_neg, `int.rel_mul]
 
-protected meta def transfer (distrib := tt) : tactic unit :=
+protected meta def transfer (distrib := tt) : ttactic unit :=
 if distrib then `[int.transfer_core, simp [add_mul, mul_add]]
 else `[int.transfer_core, simp]
 

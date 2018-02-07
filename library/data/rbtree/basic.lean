@@ -5,7 +5,7 @@ Authors: Leonardo de Moura
 -/
 universe u
 
-meta def tactic.interactive.blast_disjs : tactic unit :=
+meta def ttactic.interactive.blast_disjs : ttactic unit :=
 `[cases_type* or]
 
 namespace rbnode
@@ -26,7 +26,7 @@ inductive is_searchable (lt : α → α → Prop) : rbnode α → option α → 
 | red_s   {l r v lo hi} (hs₁ : is_searchable l lo (some v)) (hs₂ : is_searchable r (some v) hi) : is_searchable (red_node l v r) lo hi
 | black_s {l r v lo hi} (hs₁ : is_searchable l lo (some v)) (hs₂ : is_searchable r (some v) hi) : is_searchable (black_node l v r) lo hi
 
-meta def is_searchable_tactic : tactic unit :=
+meta def is_searchable_tactic : ttactic unit :=
 `[
    constructor_matching*
      [is_searchable _ leaf _ _,

@@ -16,15 +16,15 @@ section
 open decidable tactic
 variables {α : Type u} [decidable_linear_order α]
 
-private meta def min_tac_step : tactic unit :=
+private meta def min_tac_step : ttactic unit :=
 solve1 $ intros
 >> `[unfold min max]
 >> try `[simp [*, if_pos, if_neg]]
 >> try `[apply le_refl]
 >> try `[apply le_of_not_le, assumption]
 
-meta def tactic.interactive.min_tac (a b : interactive.parse lean.parser.pexpr) : tactic unit :=
-interactive.by_cases (none, ``(%%a ≤ %%b)); min_tac_step
+meta def tactic.interactive.min_tac (a b : interactive.parse lean.parser.pexpr) : ttactic unit :=
+(interactive.by_cases (none, ``(%%a ≤ %%b)) : ttactic unit); min_tac_step
 
 lemma min_le_left (a b : α) : min a b ≤ a :=
 by min_tac a b

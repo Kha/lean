@@ -8,8 +8,10 @@ import init.meta.smt.smt_tactic init.meta.interactive_base
 import init.meta.smt.rsimp
 
 namespace smt_tactic
+open tactic
+
 meta def save_info (p : pos) : smt_tactic unit :=
-do (ss, ts) ← smt_tactic.read,
+do (ss, ts) ← smt_tactic.get,
    tactic.save_info_thunk p (λ _, smt_state.to_format ss ts)
 
 meta def skip : smt_tactic unit :=
@@ -58,10 +60,10 @@ meta def ematch : smt_tactic unit :=
 smt_tactic.ematch
 
 meta def apply (q : parse texpr) : smt_tactic unit :=
-tactic.interactive.apply q
+tactic.interactive.apply q >> skip
 
 meta def fapply (q : parse texpr) : smt_tactic unit :=
-tactic.interactive.fapply q
+tactic.interactive.fapply q >> skip
 
 meta def apply_instance : smt_tactic unit :=
 tactic.apply_instance
@@ -74,7 +76,7 @@ tactic.interactive.exact q
 
 meta def «from» := exact
 
-meta def «assume» := tactic.interactive.assume
+meta def «assume» := @tactic.interactive.assume
 
 meta def «have» (h : parse ident?) (q₁ : parse (tk ":" *> texpr)?) (q₂ : parse $ (tk ":=" *> texpr)?) : smt_tactic unit :=
 let h := h.get_or_else `this in
@@ -214,11 +216,7 @@ do hs ← add_hinst_lemmas_from_pexprs reducible ff l hinst_lemmas.mk,
 
 /-- Try the given tactic, and do nothing if it fails. -/
 meta def try (t : parse_tactic smt_tactic) : smt_tactic unit :=
-smt_tactic.try t
-
-/-- Keep applying the given tactic until it fails. -/
-meta def iterate (t : parse_tactic smt_tactic) : smt_tactic unit :=
-smt_tactic.iterate t
+tactic.try t
 
 /-- Apply the given tactic to all remaining goals. -/
 meta def all_goals (t : parse_tactic smt_tactic) : smt_tactic unit :=
@@ -226,7 +224,7 @@ smt_tactic.all_goals t
 
 meta def induction (p : parse tactic.interactive.cases_arg_p) (rec_name : parse using_ident) (ids : parse with_ident_list)
   (revert : parse $ (tk "generalizing" *> ident*)?) : smt_tactic unit :=
-slift (tactic.interactive.induction p rec_name ids revert)
+slift (tactic.interactive.induction p rec_name ids revert) >> skip
 
 open tactic
 
@@ -251,7 +249,7 @@ smt_tactic.eblast
 /-- Keep applying heuristic instantiation using the given lemmas until the current goal is solved, or it fails. -/
 meta def eblast_using (l : parse pexpr_list_or_texpr) : smt_tactic unit :=
 do hs ← add_hinst_lemmas_from_pexprs reducible ff l hinst_lemmas.mk,
-   smt_tactic.iterate (smt_tactic.ematch_using hs >> smt_tactic.try smt_tactic.close)
+   iterate (smt_tactic.ematch_using hs >> tactic.try smt_tactic.close)
 
 meta def guard_expr_eq (t : expr) (p : parse $ tk ":=" *> texpr) : smt_tactic unit :=
 do e ← to_expr p, guard (expr.alpha_eqv t e)

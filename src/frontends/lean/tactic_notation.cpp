@@ -32,7 +32,7 @@ Author: Leonardo de Moura
 #include "frontends/lean/builtin_exprs.h"
 #include "util/sexpr/option_declarations.h"
 
-#define LEAN_PARSER_DEFAULT_TACTIC_TYPE "tactic"
+#define LEAN_PARSER_DEFAULT_TACTIC_TYPE "ttactic"
 
 /* Interactive tactic notation used by 'by', 'begin ... end' and '`[...]` tactic quotation blocks.
  * It supports all tactic types that implement 'monad_interactive_tactic'. */

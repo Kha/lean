@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Sebastian Ullrich
 -/
 prelude
-import init.category.monad init.meta.interactive
+import init.category.monad init.meta.interactive init.meta.ttactic
 import init.category.state init.category.except init.category.reader
 universes u v
 

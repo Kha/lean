@@ -8,6 +8,7 @@ Converter monad for building simplifiers.
 prelude
 import init.meta.tactic init.meta.simp_tactic init.meta.interactive
 import init.meta.congr_lemma init.meta.match_tactic
+import init.meta.ttactic
 open tactic
 
 meta def conv (α : Type) :=

@@ -10,6 +10,8 @@ import init.meta.contradiction_tactic init.meta.constructor_tactic
 import init.meta.injection_tactic init.meta.relation_tactics
 import init.meta.rec_util init.meta.interactive
 
+set_option parser.default_tactic_type "tactic"
+
 namespace tactic
 open expr environment list
 

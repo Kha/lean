@@ -39,7 +39,7 @@ if h : stop.has_next then
     split_core start stop.next
 else
   [start.next_to_string]
-using_well_founded { rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.2.next_to_string.length)⟩] }
+using_well_founded { rel_tac := λ _ _, `[[tactic] exact ⟨_, measure_wf (λ e, e.2.next_to_string.length)⟩] }
 
 def split (p : char → bool) (s : string) : list string :=
 split_core p s.mk_iterator s.mk_iterator

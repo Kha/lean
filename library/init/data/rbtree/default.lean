@@ -7,4 +7,4 @@ prelude
 import init.data.rbtree.basic
 
 meta def rbtree.default_lt : tactic unit :=
-`[apply has_lt.lt]
+`[[tactic] apply has_lt.lt]

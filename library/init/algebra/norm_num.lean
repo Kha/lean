@@ -17,10 +17,10 @@ a + 1
 local attribute [reducible] bit0 bit1 add1
 local attribute [simp] right_distrib left_distrib
 
-private meta def u : tactic unit :=
+private meta def u : ttactic unit :=
 `[unfold bit0 bit1 add1]
 
-private meta def usimp : tactic unit :=
+private meta def usimp : ttactic unit :=
 u >> `[simp]
 
 lemma mul_zero [mul_zero_class α] (a : α) : a * 0 = 0 :=

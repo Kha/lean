@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: Leonardo de Moura
 -/
 prelude
-import init.meta.mk_dec_eq_instance init.data.subtype.basic
+import init.meta.mk_dec_eq_instance init.data.subtype.basic init.meta.ttactic
 open tactic subtype
 universes u
 

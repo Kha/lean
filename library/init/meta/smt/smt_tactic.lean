@@ -81,7 +81,8 @@ meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 meta instance : monad_tactic smt_tactic := {}
 
 namespace smt_tactic
-open tactic (transparency)
+open tactic
+
 meta constant intros                     : smt_tactic unit
 meta constant intron                     : nat  → smt_tactic unit
 meta constant intro_lst                  : list name → smt_tactic unit
@@ -143,34 +144,18 @@ tactic.failed
 meta def fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : smt_tactic α :=
 tactic.fail msg
 
-meta def try {α : Type} (t : smt_tactic α) : smt_tactic unit :=
-optional t >> pure ()
-
-/-- `iterate_at_most n t`: repeat the given tactic at most n times or until t fails -/
-meta def iterate_at_most : nat → smt_tactic unit → smt_tactic unit
-| 0     t := return ()
-| (n+1) t := (do t, iterate_at_most n t) <|> return ()
-
-/-- `iterate_exactly n t` : execute t n times -/
-meta def iterate_exactly : nat → smt_tactic unit → smt_tactic unit
-| 0     t := return ()
-| (n+1) t := do t, iterate_exactly n t
-
-meta def iterate : smt_tactic unit → smt_tactic unit :=
-iterate_at_most 100000
-
 meta def eblast : smt_tactic unit :=
 iterate (ematch >> try close)
 
 open tactic
 
-protected meta def read : smt_tactic (smt_state × tactic_state) :=
-do s₁ ← get,
+protected meta def get : smt_tactic (smt_state × tactic_state) :=
+do s₁ ← _root_.get,
    s₂ ← tactic.get,
    return (s₁, s₂)
 
-protected meta def write : smt_state × tactic_state → smt_tactic unit :=
-λ s, put s.1 >> tactic.put s.2
+protected meta def put : smt_state × tactic_state → smt_tactic unit :=
+λ s, _root_.put s.1 >> tactic.put s.2
 
 private meta def mk_smt_goals_for (cfg : smt_config) : list expr → list smt_goal → list expr
                                   → tactic (list smt_goal × list expr)
@@ -199,7 +184,7 @@ meta def slift {α : Type} (t : tactic α) : smt_tactic α :=
 get_config >>= slift_aux t
 
 meta def trace_state : smt_tactic unit :=
-do (s₁, s₂) ← smt_tactic.read,
+do (s₁, s₂) ← smt_tactic.get,
    trace (smt_state.to_format s₁ s₂)
 
 meta def trace {α : Type} [has_to_tactic_format α] (a : α) : smt_tactic unit :=
@@ -217,12 +202,12 @@ list.length <$> get
 
 /- Low level primitives for managing set of goals -/
 meta def get_goals : smt_tactic (list smt_goal × list expr) :=
-do (g₁, _) ← smt_tactic.read,
+do g₁ ← get,
    g₂ ← tactic.get_goals,
    return (g₁, g₂)
 
 meta def set_goals : list smt_goal → list expr → smt_tactic unit :=
-λ g₁ g₂, ⟨λ ss, tactic.set_goals g₂ >> return ((), g₁)⟩
+λ g₁ g₂, tactic.set_goals g₂ >> put g₁ >> skip
 
 private meta def all_goals_core (tac : smt_tactic unit) : list smt_goal → list expr → list smt_goal → list expr → smt_tactic unit
 | []        ts        acs act := set_goals acs (ts ++ act)
@@ -395,7 +380,7 @@ open smt_tactic
 
 meta def using_smt {α} (t : smt_tactic α) (cfg : smt_config := {}) : tactic α :=
 do ss ← smt_state.mk cfg,
-   (a, _) ← (do a ← t, iterate close, return a).run ss,
+   (a, _) ← (do a ← t, tactic.iterate close, return a).run ss,
    return a
 
 meta def using_smt_with {α} (cfg : smt_config) (t : smt_tactic α) : tactic α :=

@@ -64,43 +64,47 @@ meta instance : monad_tactic tactic := {}
 
 namespace tactic
 variables {α : Type}
+variables {m : Type → Type} [monad_tactic m]
 
-meta def try_core (t : tactic α) : tactic (option α) :=
+meta def try_core (t : m α) : m (option α) :=
 optional t
 
 meta def skip : tactic unit :=
 pure ()
 
-meta def try (t : tactic α) : tactic unit :=
-try_core t >>[tactic] skip
+meta def try (t : m α) : m unit :=
+try_core t >> skip
 
 meta def failed {α : Type} : tactic α := interaction_monad.failed
 meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
 interaction_monad.fail msg
 
-meta def try_lst : list (tactic unit) → tactic unit
-| []            := failed
-| (tac :: tacs) := monad_except.orelse' (tac >> try (try_lst tacs)) (try_lst tacs)
+/-- Try to run all tactics in order. Succeed if any tactic succeeds, or else fail
+    with the first error. -/
+meta def try_lst : list (m unit) → m unit
+| []            := failure
+| (tac :: tacs) := monad_except.orelse' (tac >> optional (try_lst tacs) >> pure ())
+                                        (try_lst tacs)
 
-meta def fail_if_success {α : Type} (t : tactic α) : tactic unit :=
+meta def fail_if_success {α : Type} (t : m α) : m unit :=
 do (some _) ← try_core t | skip,
    fail "fail_if_success combinator failed, given tactic succeeded"
 
-meta def success_if_fail {α : Type} (t : tactic α) : tactic unit :=
+meta def success_if_fail {α : Type} (t : m α) : m unit :=
 fail_if_success t
 
 open nat
 /-- (iterate_at_most n t): repeat the given tactic at most n times or until t fails -/
-meta def iterate_at_most : nat → tactic unit → tactic unit
+meta def iterate_at_most : nat → m unit → m unit
 | 0        t := skip
 | (succ n) t := (do t, iterate_at_most n t) <|> skip
 
 /-- (iterate_exactly n t) : execute t n times -/
-meta def iterate_exactly : nat → tactic unit → tactic unit
+meta def iterate_exactly : nat → m unit → m unit
 | 0        t := skip
 | (succ n) t := do t, iterate_exactly n t
 
-meta def iterate : tactic unit → tactic unit :=
+meta def iterate : m unit → m unit :=
 iterate_at_most 100000
 
 meta def returnopt (e : option α) : tactic α :=
@@ -654,11 +658,11 @@ format_result >>= trace
 meta def rexact (e : expr) : tactic unit :=
 exact e reducible
 
-meta def any_hyp_aux {α : Type} (f : expr → tactic α) : list expr → tactic α
+meta def any_hyp_aux {α : Type} (f : expr → m α) : list expr → m α
 | []        := failed
 | (h :: hs) := f h <|> any_hyp_aux hs
 
-meta def any_hyp {α : Type} (f : expr → tactic α) : tactic α :=
+meta def any_hyp {α : Type} (f : expr → m α) : m α :=
 local_context >>= any_hyp_aux f
 
 /-- `find_same_type t es` tries to find in es an expression with type definitionally equal to t -/
@@ -733,7 +737,7 @@ do ng ← num_goals,
 meta def rotate : nat → tactic unit :=
 rotate_left
 
-private meta def repeat_aux (t : tactic unit) : list expr → list expr → tactic unit
+private meta def repeat_aux (t : m unit) : list expr → list expr → m unit
 | []      r := set_goals r.reverse
 | (g::gs) r := do
   ok ← try_core (set_goals [g] >> t),
@@ -748,12 +752,12 @@ private meta def repeat_aux (t : tactic unit) : list expr → list expr → tact
     the tactic is applied recursively to all the generated subgoals until it eventually fails.
     The recursion stops in a subgoal when the tactic has failed to make progress.
     The tactic `repeat` never fails. -/
-meta def repeat (t : tactic unit) : tactic unit :=
+meta def repeat (t : m unit) : m unit :=
 do gs ← get_goals, repeat_aux t gs []
 
 /-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
    The tactic fails if all t_i's fail. -/
-meta def first {α : Type} : list (tactic α) → tactic α
+meta def first {α : Type} : list (m α) → m α
 | []      := fail "first tactic failed, no more alternatives"
 | (t::ts) := t <|> first ts
 
@@ -773,10 +777,10 @@ do gs ← get_goals,
    end
 
 /-- `solve [t_1, ... t_n]` applies the first tactic that solves the main goal. -/
-meta def solve (ts : list (tactic unit)) : tactic unit :=
+meta def solve (ts : list (m unit)) : m unit :=
 first $ map solve1 ts
 
-private meta def focus_aux : list (tactic unit) → list expr → list expr → tactic unit
+private meta def focus_aux : list (m unit) → list expr → list expr → m unit
 | []       []      rs := set_goals rs
 | (t::ts)  []      rs := fail "focus tactic failed, insufficient number of goals"
 | tts      (g::gs) rs :=
@@ -788,10 +792,10 @@ private meta def focus_aux : list (tactic unit) → list expr → list expr → 
        focus_aux ts gs (rs ++ rs')
 
 /-- `focus [t_1, ..., t_n]` applies t_i to the i-th goal. Fails if the number of goals is not n. -/
-meta def focus (ts : list (tactic unit)) : tactic unit :=
+meta def focus (ts : list (m unit)) : m unit :=
 do gs ← get_goals, focus_aux ts gs []
 
-meta def focus1 {α} (tac : tactic α) : tactic α :=
+meta def focus1 {α} (tac : m α) : m α :=
 do g::gs ← get_goals,
    match gs with
    | [] := tac
@@ -803,7 +807,7 @@ do g::gs ← get_goals,
       return a
    end
 
-private meta def all_goals_core (tac : tactic unit) : list expr → list expr → tactic unit
+private meta def all_goals_core (tac : m unit) : list expr → list expr → m unit
 | []        ac := set_goals ac
 | (g :: gs) ac :=
   mcond (is_assigned g) (all_goals_core gs ac) $
@@ -813,11 +817,11 @@ private meta def all_goals_core (tac : tactic unit) : list expr → list expr �
        all_goals_core gs (ac ++ new_gs)
 
 /-- Apply the given tactic to all goals. -/
-meta def all_goals (tac : tactic unit) : tactic unit :=
+meta def all_goals (tac : m unit) : m unit :=
 do gs ← get_goals,
    all_goals_core tac gs []
 
-private meta def any_goals_core (tac : tactic unit) : list expr → list expr → bool → tactic unit
+private meta def any_goals_core (tac : m unit) : list expr → list expr → bool → m unit
 | []        ac progress := guard progress >> set_goals ac
 | (g :: gs) ac progress :=
   mcond (is_assigned g) (any_goals_core gs ac progress) $
@@ -828,29 +832,29 @@ private meta def any_goals_core (tac : tactic unit) : list expr → list expr �
 
 /-- Apply the given tactic to any goal where it succeeds. The tactic succeeds only if
    tac succeeds for at least one goal. -/
-meta def any_goals (tac : tactic unit) : tactic unit :=
+meta def any_goals (tac : m unit) : m unit :=
 do gs ← get_goals,
    any_goals_core tac gs [] ff
 
 /-- LCF-style AND_THEN tactic. It applies tac1, and if succeed applies tac2 to each subgoal produced by tac1 -/
-meta def seq (tac1 : tactic unit) (tac2 : tactic unit) : tactic unit :=
+meta def seq (tac1 : m unit) (tac2 : m unit) : m unit :=
 do g::gs ← get_goals,
    set_goals [g],
    tac1, all_goals tac2,
    gs' ← get_goals,
    set_goals (gs' ++ gs)
 
-meta def seq_focus (tac1 : tactic unit) (tacs2 : list (tactic unit)) : tactic unit :=
+meta def seq_focus (tac1 : m unit) (tacs2 : list (m unit)) : m unit :=
 do g::gs ← get_goals,
    set_goals [g],
    tac1, focus tacs2,
    gs' ← get_goals,
    set_goals (gs' ++ gs)
 
-meta instance andthen_seq : has_andthen (tactic unit) (tactic unit) (tactic unit) :=
+meta instance andthen_seq : has_andthen (m unit) (m unit) (m unit) :=
 ⟨seq⟩
 
-meta instance andthen_seq_focus : has_andthen (tactic unit) (list (tactic unit)) (tactic unit) :=
+meta instance andthen_seq_focus : has_andthen (m unit) (list (m unit)) (m unit) :=
 ⟨seq_focus⟩
 
 meta constant is_trace_enabled_for : name → bool
@@ -1112,10 +1116,10 @@ private meta def mk_aux_decl_name : option name → tactic name
 | none          := new_aux_decl_name
 | (some suffix) := do p ← decl_name, return $ p ++ suffix
 
-meta def abstract (tac : tactic unit) (suffix : option name := none) (zeta_reduce := tt) : tactic unit :=
+meta def abstract (tac : m unit) (suffix : option name := none) (zeta_reduce := tt) : m unit :=
 do fail_if_no_goals,
    gs ← get_goals,
-   type ← if zeta_reduce then target >>= zeta else target,
+   type ← if zeta_reduce then target >>= ↑zeta else target,
    is_lemma ← is_prop type,
    m ← mk_meta_var type,
    set_goals [m],
