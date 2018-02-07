@@ -61,7 +61,7 @@ class LeanExprPrinter:
             p = self.val.address.cast(gdb.lookup_type('char').pointer())
             p += gdb.lookup_type('lean::expr_macro').sizeof
             p = p.cast(gdb.lookup_type('lean::expr').pointer())
-            for i in range(self.val['m_num_args']):
+            for i in range(int(self.val['m_num_args'])):
                 yield ('[%s]' % i, (p + i).dereference())
 
 class LeanLevelPrinter:
