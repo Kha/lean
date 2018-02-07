@@ -14,13 +14,20 @@ open tactic
 meta def conv (α : Type) :=
 tactic α
 
+meta def conv.goal := tactic.goal
+
+meta instance : goal_type conv.goal :=
+⟨id, id⟩
 section
 local attribute [reducible] conv
 meta instance : monad conv := by apply_instance
 meta instance : monad_fail conv := by apply_instance
 meta instance : alternative conv := by apply_instance
 meta instance : monad_except _ conv := by apply_instance
-meta instance : monad_tactic conv := by apply_instance
+meta instance : monad_tactic conv :=
+{ goal_ty := conv.goal,
+  goal_ty_is_goal_type := by apply_instance,
+  ..tactic.monad_tactic }
 end
 
 namespace conv

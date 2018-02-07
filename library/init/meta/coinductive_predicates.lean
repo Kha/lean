@@ -570,7 +570,7 @@ do
     local_const v.local_uniq_name v.local_pp_name v.local_binder_info <$> infer_type v),
   mvars ← apply_core rule {approx := ff, new_goals := new_goals.all},
   -- analyse relation
-  g ← list.head <$> get_goals,
+  g ← list.head <$> tactic.get_goals,
   (list.cons _ m_is) ← return $ mvars.drop_while (λv, v.2 ≠ g),
   tgt ← target,
   (is, ty) ← mk_local_pis tgt,

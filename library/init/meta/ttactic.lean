@@ -32,7 +32,18 @@ state_t _root_.ttactic.tag_info tactic
 namespace ttactic
 open tactic
 
-meta instance : monad_tactic ttactic := {}
+meta instance : monad_tactic ttactic := {
+  goal_ty := ttactic.goal,
+  get_goals := do {
+    s ← get,
+    gs ← monad_lift tactic.get_goals,
+    pure $ gs.map $ λ g, {tag := (s.tags.find g).get_or_else [], target := g}
+  },
+  set_goals := λ gs, do {
+    --modify $ λ s, {tags := native.rb_map.of_list $ gs.map (λ g, (g.target, g.tag)), ..s},
+    monad_lift $ tactic.set_goals (gs.map goal.target)
+  }
+}
 meta instance : monad_state_lift _ _ ttactic := infer_instance
 
 meta def execute (t : ttactic unit) : tactic unit :=
@@ -119,6 +130,8 @@ parameters {m n : Type → Type}
 include n
 variables [monad_tactic m] [monad_state_lift tag_info n m] [monad n]
 
+local notation `γ` := monad_tactic.goal_ty m
+
 private meta def collect_hyps_uids : m name_set :=
 do ctx ← local_context,
    return $ ctx.foldl (λ r h, r.insert h.local_uniq_name) mk_name_set
@@ -185,24 +198,24 @@ private meta def tag_match (t : tag) (pre : list name) : bool :=
 pre.is_prefix_of t.reverse &&
 ((is_case_tag t).is_some || is_case_simple_tag t)
 
-private meta def collect_tagged_goals (pre : list name) : m (list expr) :=
+private meta def collect_tagged_goals (pre : list name) : m (list γ) :=
 do gs ← get_goals,
    gs.mfoldr (λ g r, do
-      t ← get_tag g,
+      t ← get_tag (goal_type.get_target g),
       if tag_match t pre then return (g::r) else return r)
       []
 
-private meta def find_tagged_goal_aux (pre : list name) : m expr :=
+private meta def find_tagged_goal_aux (pre : list name) : m γ :=
 do gs ← collect_tagged_goals pre,
    match gs with
    | []  := fail ("invalid `case`, there is no goal tagged with prefix " ++ to_string pre)
    | [g] := return g
    | gs  := do
-     tags : list (list name) ← gs.mmap get_tag,
+     tags : list (list name) ← gs.mmap (get_tag ∘ goal_type.get_target),
      monad_lift $ fail ("invalid `case`, there is more than one goal tagged with prefix " ++ to_string pre ++ ", matching tags: " ++ to_string tags)
    end
 
-private meta def find_tagged_goal (pre : list name) : m expr :=
+private meta def find_tagged_goal (pre : list name) : m γ :=
 match pre with
 | [] := do g::gs ← get_goals, return g
 | _  :=
@@ -278,7 +291,7 @@ end
 -/
 meta def case (pre : parse ident_*) (ids : parse $ (tk ":" *> ident_*)?) (tac : parse_tactic m tt) : m unit :=
 do g   ← find_tagged_goal pre,
-   tag ← get_tag g,
+   tag ← get_tag (goal_type.get_target g),
    let ids := ids.get_or_else [],
    match is_case_tag tag with
    | some n := do
@@ -304,7 +317,7 @@ do g   ← find_tagged_goal pre,
                        list.index_of ctor ctors,
           /- Remark: we now use `find_case` just to locate the `lambda` used in `rename_lams`.
              The goal is now located using tags. -/
-          (case, _) ← (find_case [g] ty idx (env.inductive_num_indices ty) none r ).to_monad
+          (case, _) ← (find_case [goal_type.get_target g] ty idx (env.inductive_num_indices ty) none r ).to_monad
                       <|> fail "could not find open goal of given case",
           gs        ← get_goals,
           set_goals $ g :: gs.filter (≠ g),

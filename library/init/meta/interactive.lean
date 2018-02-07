@@ -1298,7 +1298,9 @@ Fail if there are unsolved goals.
 meta def done : m unit :=
 tactic.done
 
-private meta def show_aux (p : pexpr) : list expr → list expr → tactic unit
+local notation `γ` := monad_tactic.goal_ty m
+
+private meta def show_aux (p : pexpr) : list γ → list γ → m unit
 | []      r := fail "show tactic failed"
 | (g::gs) r :=
   do {set_goals [g], g_ty ← target, ty ← i_to_expr p, unify g_ty ty, set_goals (g :: r.reverse ++ gs), tactic.change ty}

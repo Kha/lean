@@ -46,21 +46,46 @@ meta instance : alternative tactic :=
   orelse  := @monad_except.orelse _ _ _,
   ..interaction_monad.monad }
 
+meta class goal_type (α : Type) extends has_to_tactic_format α :=
+[decidable_eq : decidable_eq α]
+(get_target : α → expr)
+(from_target {} : expr → α)
+
+attribute [instance] goal_type.decidable_eq
+
 /-- A tactic-like monad -/
 meta class monad_tactic (m : Type → Type) extends
   monad_fail m, monad_except (interaction_monad_error tactic_state) m,
   has_monad_lift_t tactic m, has_scope_impure m :=
 -- cannot be extended directly because it shares a superclass with monad_fail
 [to_alternative : alternative m]
+(goal_ty : Type)
+[goal_ty_is_goal_type : goal_type goal_ty]
+(get_goals {} : m (list goal_ty))
+(set_goals {} : list goal_ty → m unit)
 
-attribute [instance] monad_tactic.to_alternative
+export monad_tactic (get_goals set_goals)
+
+attribute [instance] monad_tactic.to_alternative monad_tactic.goal_ty_is_goal_type
 
 /- note: has_coe_t instead of has_coe because the instance for tactic could
    loop otherwise -/
 meta instance coe_monad_tactic {α m} [monad_tactic m] : has_coe_t (tactic α) (m α) :=
 ⟨monad_lift⟩
 
-meta instance : monad_tactic tactic := {}
+protected meta constant tactic.get_goals : tactic (list expr)
+protected meta constant tactic.set_goals : list expr → tactic unit
+
+meta def tactic.goal := expr
+
+meta instance : goal_type tactic.goal :=
+⟨id, id⟩
+
+meta instance : monad_tactic tactic := {
+  goal_ty := tactic.goal,
+  get_goals := tactic.get_goals,
+  set_goals := tactic.set_goals
+}
 
 namespace tactic
 variables {α : Type}
@@ -344,8 +369,6 @@ meta constant define_core   : name → expr → tactic unit
 meta constant definev_core  : name → expr → expr → tactic unit
 /-- rotate goals to the left -/
 meta constant rotate_left   : nat → tactic unit
-meta constant get_goals     : tactic (list expr)
-meta constant set_goals     : list expr → tactic unit
 inductive new_goals
 | non_dep_first | non_dep_only | all
 /-- Configuration options for the `apply` tactic.
@@ -737,10 +760,12 @@ do ng ← num_goals,
 meta def rotate : nat → tactic unit :=
 rotate_left
 
-private meta def repeat_aux (t : m unit) : list expr → list expr → m unit
+local notation `γ` := monad_tactic.goal_ty m
+
+private meta def repeat_aux (t : m unit) : list γ → list γ → m unit
 | []      r := set_goals r.reverse
 | (g::gs) r := do
-  ok ← try_core (set_goals [g] >> t),
+  ok ← optional (set_goals [g] >> t),
   match ok with
   | none := repeat_aux gs (g::r)
   | _    := do
@@ -780,11 +805,11 @@ do gs ← get_goals,
 meta def solve (ts : list (m unit)) : m unit :=
 first $ map solve1 ts
 
-private meta def focus_aux : list (m unit) → list expr → list expr → m unit
+private meta def focus_aux : list (m unit) → list γ → list γ → m unit
 | []       []      rs := set_goals rs
 | (t::ts)  []      rs := fail "focus tactic failed, insufficient number of goals"
 | tts      (g::gs) rs :=
-  mcond (is_assigned g) (focus_aux tts gs rs) $
+  mcond (is_assigned $ goal_type.get_target g) (focus_aux tts gs rs) $
     do set_goals [g],
        t::ts ← pure tts | fail "focus tactic failed, insufficient number of tactics",
        t,
@@ -807,10 +832,10 @@ do g::gs ← get_goals,
       return a
    end
 
-private meta def all_goals_core (tac : m unit) : list expr → list expr → m unit
+private meta def all_goals_core (tac : m unit) : list γ → list γ → m unit
 | []        ac := set_goals ac
 | (g :: gs) ac :=
-  mcond (is_assigned g) (all_goals_core gs ac) $
+  mcond (is_assigned $ goal_type.get_target g) (all_goals_core gs ac) $
     do set_goals [g],
        tac,
        new_gs ← get_goals,
@@ -821,12 +846,12 @@ meta def all_goals (tac : m unit) : m unit :=
 do gs ← get_goals,
    all_goals_core tac gs []
 
-private meta def any_goals_core (tac : m unit) : list expr → list expr → bool → m unit
+private meta def any_goals_core (tac : m unit) : list γ → list γ → bool → m unit
 | []        ac progress := guard progress >> set_goals ac
 | (g :: gs) ac progress :=
-  mcond (is_assigned g) (any_goals_core gs ac progress) $
+  mcond (is_assigned $ goal_type.get_target g) (any_goals_core gs ac progress) $
     do set_goals [g],
-       succeeded ← try_core tac,
+       succeeded ← optional tac,
        new_gs    ← get_goals,
        any_goals_core gs (ac ++ new_gs) (succeeded.is_some || progress)
 
@@ -1122,7 +1147,7 @@ do fail_if_no_goals,
    type ← if zeta_reduce then target >>= ↑zeta else target,
    is_lemma ← is_prop type,
    m ← mk_meta_var type,
-   set_goals [m],
+   set_goals [goal_type.from_target m],
    tac,
    n ← num_goals,
    when (n ≠ 0) (fail "abstract tactic failed, there are unsolved goals"),

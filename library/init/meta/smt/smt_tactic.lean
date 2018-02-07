@@ -78,7 +78,11 @@ meta instance : has_monad_lift tactic smt_tactic :=
 meta instance (α : Type) : has_coe (tactic α) (smt_tactic α) :=
 ⟨monad_lift⟩
 
-meta instance : monad_tactic smt_tactic := {}
+meta instance : monad_tactic smt_tactic := {
+  goal_ty := tactic.goal,
+  get_goals := monad_lift tactic.get_goals,
+  set_goals := monad_lift ∘ tactic.set_goals,
+}
 
 namespace smt_tactic
 open tactic
