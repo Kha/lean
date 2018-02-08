@@ -3057,10 +3057,10 @@ class visit_structure_instance_fn {
      * Example: `functor.map (functor.mk ?p1 ?m1 ?m2...) => ?m1`
      */
     void reduce_and_check_deps(expr & e, name const & full_S_fname) {
+        e = m_elab.instantiate_mvars(e);
         if (m_use_subobjects)
             e = reduce_projections_visitor(m_ctx)(e);
         name_set deps;
-        e = m_elab.instantiate_mvars(e);
         for_each(e, [&](expr const & e, unsigned) {
             name const *n;
             if (is_metavar(e) && (n = m_mvar2field.find(mlocal_name(e))) && !m_ctx.is_assigned(e))
