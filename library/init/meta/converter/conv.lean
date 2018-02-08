@@ -24,10 +24,12 @@ meta instance : monad conv := by apply_instance
 meta instance : monad_fail conv := by apply_instance
 meta instance : alternative conv := by apply_instance
 meta instance : monad_except _ conv := by apply_instance
-meta instance : monad_tactic conv :=
+meta def conv.goal_cfg {m : Type → Type} [has_monad_lift_t tactic m] : goal_cfg m :=
 { goal_ty := conv.goal,
   goal_ty_is_goal_type := by apply_instance,
-  ..tactic.monad_tactic }
+  ..tactic.goal_cfg }
+meta instance : monad_tactic conv :=
+{ goal_cfg := conv.goal_cfg }
 end
 
 namespace conv

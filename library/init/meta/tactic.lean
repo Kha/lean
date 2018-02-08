@@ -53,16 +53,26 @@ meta class goal_type (α : Type) :=
 
 attribute [instance] goal_type.decidable_eq
 
+meta structure goal_cfg (m : Type → Type) :=
+(goal_ty : Type)
+[goal_ty_is_goal_type : goal_type goal_ty]
+(get_goals {} : m (list goal_ty))
+(set_goals {} : list goal_ty → m unit)
+
 /-- A tactic-like monad -/
 meta class monad_tactic (m : Type → Type) extends
   monad_fail m, monad_except (interaction_monad_error tactic_state) m,
   has_monad_lift_t tactic m, has_scope_impure m :=
 -- cannot be extended directly because it shares a superclass with monad_fail
 [to_alternative : alternative m]
-(goal_ty : Type)
-[goal_ty_is_goal_type : goal_type goal_ty]
-(get_goals {} : m (list goal_ty))
-(set_goals {} : list goal_ty → m unit)
+(goal_cfg : goal_cfg m)
+
+namespace monad_tactic
+  variables {m : Type → Type} [monad_tactic m]
+  meta def get_goals := goal_cfg.get_goals (monad_tactic.goal_cfg m)
+  meta def set_goals := goal_cfg.set_goals (monad_tactic.goal_cfg m)
+  meta instance goal_ty_is_goal_type := goal_cfg.goal_ty_is_goal_type (monad_tactic.goal_cfg m)
+end monad_tactic
 
 export monad_tactic (get_goals set_goals)
 
@@ -81,11 +91,14 @@ meta def tactic.goal := expr
 meta instance : goal_type tactic.goal :=
 ⟨id, id⟩
 
-meta instance : monad_tactic tactic := {
+meta def tactic.goal_cfg {m : Type → Type} [has_monad_lift_t tactic m] : goal_cfg m := {
   goal_ty := tactic.goal,
-  get_goals := tactic.get_goals,
-  set_goals := tactic.set_goals
+  get_goals := monad_lift tactic.get_goals,
+  set_goals := monad_lift ∘ tactic.set_goals,
 }
+
+meta instance : monad_tactic tactic :=
+{ goal_cfg := tactic.goal_cfg }
 
 namespace tactic
 variables {α : Type}
@@ -747,7 +760,7 @@ do ng ← num_goals,
 meta def rotate : nat → tactic unit :=
 rotate_left
 
-local notation `γ` := monad_tactic.goal_ty m
+local notation `γ` := (monad_tactic.goal_cfg m).goal_ty
 
 private meta def repeat_aux (t : m unit) : list γ → list γ → m unit
 | []      r := set_goals r.reverse

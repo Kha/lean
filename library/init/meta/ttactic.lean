@@ -37,7 +37,8 @@ meta instance : goal_type ttactic.goal := {
   from_target := λ t, ⟨[], t⟩
 }
 
-meta instance : monad_tactic ttactic := {
+protected meta def goal_cfg {m : Type → Type}
+  [has_monad_lift_t tactic m] [has_monad_lift_t ttactic m] [monad m] : goal_cfg m := {
   goal_ty := ttactic.goal,
   get_goals := do {
     s ← get,
@@ -49,6 +50,9 @@ meta instance : monad_tactic ttactic := {
     monad_lift $ tactic.set_goals (gs.map goal.target)
   }
 }
+meta instance : monad_tactic ttactic :=
+{ goal_cfg := ttactic.goal_cfg }
+
 meta instance : monad_state_lift _ _ ttactic := infer_instance
 
 meta def execute (t : ttactic unit) : tactic unit :=
@@ -135,7 +139,7 @@ parameters {m n : Type → Type}
 include n
 variables [monad_tactic m] [monad_state_lift tag_info n m] [monad n]
 
-local notation `γ` := monad_tactic.goal_ty m
+local notation `γ` := (monad_tactic.goal_cfg m).goal_ty
 
 private meta def collect_hyps_uids : m name_set :=
 do ctx ← local_context,

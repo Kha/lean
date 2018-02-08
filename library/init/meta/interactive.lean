@@ -1298,7 +1298,7 @@ Fail if there are unsolved goals.
 meta def done : m unit :=
 tactic.done
 
-local notation `γ` := monad_tactic.goal_ty m
+local notation `γ` := (monad_tactic.goal_cfg m).goal_ty
 
 private meta def show_aux (p : pexpr) : list γ → list γ → m unit
 | []      r := fail "show tactic failed"

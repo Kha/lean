@@ -4,7 +4,8 @@ state_t nat tactic
 meta instance (α : Type) : has_coe (tactic α) (mytac α) :=
 ⟨monad_lift⟩
 
-meta instance : monad_tactic mytac := {}
+meta instance : monad_tactic mytac :=
+{ goal_cfg := tactic.goal_cfg }
 
 namespace mytac
 
