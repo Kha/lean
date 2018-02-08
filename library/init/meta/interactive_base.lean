@@ -246,7 +246,7 @@ meta constant inductive_decl.parse : decl_meta_info → parser inductive_decl
 end interactive
 
 section macros
-open interaction_monad
+open lean.parser
 open interactive
 
 private meta def parse_format : string → list char → parser pexpr

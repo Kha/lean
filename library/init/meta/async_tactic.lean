@@ -10,13 +10,16 @@ import init.meta.interactive
 namespace tactic
 
 private meta def report {α} (s : tactic_state) (fmt : unit → format) : α :=
-undefined_core $ format.to_string $ fmt () ++ format.line ++ to_fmt s
+match interaction_monad.run tactic.format_state s with
+| except.ok (f, _) := undefined_core $ format.to_string $ fmt () ++ format.line ++ f
+| except.error e   := undefined_core "unreachable"
+end
 
 
 private meta def run_or_fail {α} (s : tactic_state) (tac : tactic α) : α :=
 match tac.run s with
 | except.ok (a, _) := a
-| except.error e   := report e.state e.msg
+| except.error e   := report s e.msg
 end
 
 meta def run_async {α : Type} (tac : tactic α) : tactic (task α) := do

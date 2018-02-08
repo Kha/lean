@@ -45,6 +45,10 @@ section
   | (except.error err) := except.error $ f err
   | (except.ok v) := except.ok v
 
+  protected def get_or_else {α : Type u} : except ε α → (ε → α) → α
+  | (error err) f := f err
+  | (ok v)      _ := v
+
   protected def bind {α β : Type v} (ma : except ε α) (f : α → except ε β) : except ε β :=
   match ma with
   | (except.error err) := except.error err
@@ -103,6 +107,9 @@ section
 
   instance : monad (except_t ε m) :=
   { pure := @return, bind := @bind }
+
+  instance : has_orelse (except_t ε m) :=
+  ⟨λ α x y, catch x $ λ _, y⟩
 end
 end except_t
 

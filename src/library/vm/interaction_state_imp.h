@@ -182,7 +182,7 @@ template<typename State>
 auto interaction_monad<State>::is_exception(vm_state & S, vm_obj const & r) -> optional<exception_info> {
     if (!is_result_exception(r))
         return {};
-    // except.error (interaction_monad_error.mk fn pos s)
+    // except.error (interaction_monad_error.mk fn pos)
     vm_obj err = cfield(r, 0);
     vm_obj fmt = S.invoke(cfield(err, 0), mk_vm_unit());
     optional<pos_info> p;
@@ -190,8 +190,7 @@ auto interaction_monad<State>::is_exception(vm_state & S, vm_obj const & r) -> o
         auto vm_p = get_some_value(cfield(err, 1));
         p = some(mk_pair(to_unsigned(cfield(vm_p, 0)), to_unsigned(cfield(vm_p, 1))));
     }
-    vm_obj s = cfield(err, 2);
-    return optional<exception_info>(to_format(fmt), p, to_state(s));
+    return optional<exception_info>(to_format(fmt), p);
 }
 
 template<typename State>

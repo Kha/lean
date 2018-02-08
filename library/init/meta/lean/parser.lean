@@ -55,10 +55,18 @@ do pos₁ ← cur_pos,
         throw e
       else p₂
 
+meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : parser α :=
+throw ⟨(λ _, to_fmt msg), none⟩
+
+meta def failed {α : Type} : parser α :=
+parser.fail "failed"
+
+meta instance : monad_fail parser :=
+{ fail := λ α s, parser.fail (to_fmt s), ..interaction_monad.monad }
+
 meta instance : alternative parser :=
-{ failure := @interaction_monad.failed _,
-  orelse  := @parser_orelse,
-  ..interaction_monad.monad }
+{ failure := @parser.failed,
+  orelse  := @parser_orelse }
 
 
 -- TODO: move
@@ -77,7 +85,7 @@ meta def tactic_to_parser (t : tactic α) : parser α :=
 do s ← get,
    match t.run (tactic_state.mk_empty s.env s.options) with
    | except.ok (a, ts) := set_env ts.env >> pure a
-   | except.error e := throw { state := s, ..e }
+   | except.error e    := throw e
    end
 
 meta instance : has_coe (tactic α) (parser α) :=

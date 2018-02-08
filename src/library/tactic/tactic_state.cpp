@@ -217,11 +217,11 @@ format tactic_state::pp_expr(expr const & e) const {
     return pp_expr(fmtf, e);
 }
 
-format tactic_state::pp_goal(expr const & g) const {
+format tactic_state::pp_goal(expr const & g, bool target_lhs_only) const {
     lean_assert(is_metavar(g));
     lean_assert(mctx().find_metavar_decl(g));
     formatter_factory const & fmtf = get_global_ios().get_formatter_factory();
-    return pp_goal(fmtf, g);
+    return pp_goal(fmtf, g, target_lhs_only);
 }
 
 vm_obj to_obj(tactic_state const & s) {
@@ -245,10 +245,6 @@ vm_obj tactic_state_env(vm_obj const & s) {
     return to_obj(tactic::to_state(s).env());
 }
 
-vm_obj tactic_state_to_format(vm_obj const & s, vm_obj const & target_lhs_only) {
-    return to_obj(tactic::to_state(s).pp_core(to_bool(target_lhs_only)));
-}
-
 format pp_expr(tactic_state const & s, expr const & e) {
     expr new_e      = e;
     bool inst_mvars = get_pp_instantiate_mvars(s.get_options());
@@ -264,6 +260,11 @@ format pp_indented_expr(tactic_state const & s, expr const & e) {
 
 vm_obj tactic_state_format_expr(vm_obj const & s, vm_obj const & e) {
     return to_obj(pp_expr(tactic::to_state(s), to_expr(e)));
+}
+
+vm_obj tactic_format_goal(vm_obj const & e, vm_obj const & target_lhs_only, vm_obj const & s) {
+    format f = tactic::to_state(s).pp_goal(to_expr(e), to_bool(target_lhs_only));
+    return tactic::mk_success(to_obj(f), s);
 }
 
 vm_obj mk_no_goals_exception(tactic_state const & s) {
@@ -895,9 +896,9 @@ void initialize_tactic_state() {
     DECLARE_VM_BUILTIN(name({"tactic_state", "mk_empty"}),       tactic_state_mk_empty);
     DECLARE_VM_BUILTIN(name({"tactic_state", "env"}),            tactic_state_env);
     DECLARE_VM_BUILTIN(name({"tactic_state", "format_expr"}),    tactic_state_format_expr);
-    DECLARE_VM_BUILTIN(name({"tactic_state", "to_format"}),      tactic_state_to_format);
     DECLARE_VM_BUILTIN(name({"tactic_state", "get_options"}),    tactic_state_get_options);
     DECLARE_VM_BUILTIN(name({"tactic_state", "set_options"}),    tactic_state_set_options);
+    DECLARE_VM_BUILTIN(name({"tactic", "format_goal"}),          tactic_format_goal);
     DECLARE_VM_BUILTIN(name({"tactic", "target"}),               tactic_target);
     DECLARE_VM_BUILTIN(name({"tactic", "result"}),               tactic_result);
     DECLARE_VM_BUILTIN(name({"tactic", "is_assigned"}),          tactic_is_assigned);

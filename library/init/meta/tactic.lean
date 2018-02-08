@@ -15,13 +15,6 @@ namespace tactic_state
 /-- Create a tactic state with an empty local context and a dummy goal. -/
 meta constant mk_empty    : environment → options → tactic_state
 meta constant env         : tactic_state → environment
-/-- Format the given tactic state. If `target_lhs_only` is true and the target
-    is of the form `lhs ~ rhs`, where `~` is a simplification relation,
-    then only the `lhs` is displayed.
-
-    Remark: the parameter `target_lhs_only` is a temporary hack used to implement
-    the `conv` monad. It will be removed in the future. -/
-meta constant to_format   (s : tactic_state) (target_lhs_only : bool := ff) : format
 /-- Format expression with respect to the main goal in the tactic state.
    If the tactic state does not contain any goals, then format expression
    using an empty local context. -/
@@ -30,23 +23,21 @@ meta constant get_options : tactic_state → options
 meta constant set_options : tactic_state → options → tactic_state
 end tactic_state
 
-meta instance : has_to_format tactic_state :=
-⟨tactic_state.to_format⟩
-
-meta instance : has_to_string tactic_state :=
-⟨λ s, (to_fmt s).to_string s.get_options⟩
-
 @[reducible] meta def tactic := interaction_monad tactic_state
+
+meta instance : has_orelse tactic :=
+⟨@monad_except.orelse _ _ _⟩
 
 infixl ` >>=[tactic] `:2 := @bind tactic _ _ _
 infixl ` >>[tactic] `:2  := @has_bind.and_then _ _ tactic _
 
-meta instance : alternative tactic :=
-{ failure := @interaction_monad.failed _,
-  orelse  := @monad_except.orelse _ _ _,
-  ..interaction_monad.monad }
+meta class {u} has_to_tactic_format (α : Type u) :=
+(to_tactic_format : α → tactic format)
 
-meta class goal_type (α : Type) :=
+meta def {u} tactic.pp {α : Type u} [has_to_tactic_format α] : α → tactic format :=
+has_to_tactic_format.to_tactic_format
+
+meta class goal_type (α : Type) extends has_to_tactic_format α :=
 [decidable_eq : decidable_eq α]
 (get_target : α → expr)
 (from_target {} : expr → α)
@@ -61,33 +52,78 @@ meta structure goal_cfg (m : Type → Type) :=
 
 /-- A tactic-like monad -/
 meta class monad_tactic (m : Type → Type) extends
-  monad_fail m, monad_except (interaction_monad_error tactic_state) m,
+  monad m, has_orelse m, monad_except interaction_monad_error m,
   has_monad_lift_t tactic m, has_scope_impure m :=
--- cannot be extended directly because it shares a superclass with monad_fail
-[to_alternative : alternative m]
 (goal_cfg : goal_cfg m)
 
 namespace monad_tactic
-  variables {m : Type → Type} [monad_tactic m]
-  meta def get_goals := goal_cfg.get_goals (monad_tactic.goal_cfg m)
-  meta def set_goals := goal_cfg.set_goals (monad_tactic.goal_cfg m)
-  meta instance goal_ty_is_goal_type := goal_cfg.goal_ty_is_goal_type (monad_tactic.goal_cfg m)
+variables {m : Type → Type} [monad_tactic m]
+
+meta def get_goals := goal_cfg.get_goals (monad_tactic.goal_cfg m)
+meta def set_goals := goal_cfg.set_goals (monad_tactic.goal_cfg m)
+meta instance goal_ty_is_goal_type := goal_cfg.goal_ty_is_goal_type (monad_tactic.goal_cfg m)
 end monad_tactic
 
 export monad_tactic (get_goals set_goals)
 
-attribute [instance] monad_tactic.to_alternative monad_tactic.goal_ty_is_goal_type
+attribute [instance] monad_tactic.goal_ty_is_goal_type
+
+namespace tactic
+variables {m : Type → Type} [monad_tactic m]
+
+meta def format_goals {γ : Type} [has_to_tactic_format γ] (gs : list γ) : tactic format :=
+match gs with
+| [] := pure "no goals"
+| [g] := tactic.pp g
+| gs := do gs ← gs.mmap tactic.pp,
+           pure $ format.join $ gs.intersperse (format.line ++ format.line)
+end
+
+meta def format_state : m format :=
+get_goals >>= monad_lift ∘ format_goals
+
+meta def delay_format_state : m (unit → format) :=
+do gs ← get_goals,
+   s ← monad_lift (get : tactic _),
+   pure $ λ u, match (format_goals gs).run s with
+   | except.ok (f, _) := f
+   | except.error e   := "<error while executing format_state:" ++ e.msg u ++ ">"
+   end
+
+meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : m α :=
+do f ← delay_format_state,
+   throw ⟨(λ u, to_fmt msg ++ format.line ++ "state:" ++ format.line ++ f u), none⟩
+
+meta def failed {α : Type} : m α :=
+fail "failed"
+
+meta instance : monad_fail m :=
+{ fail := λ α s, fail (to_fmt s) }
+
+meta instance : alternative m :=
+{ failure := @failed _ _ }
+end tactic
 
 /- note: has_coe_t instead of has_coe because the instance for tactic could
    loop otherwise -/
 meta instance coe_monad_tactic {α m} [monad_tactic m] : has_coe_t (tactic α) (m α) :=
 ⟨monad_lift⟩
 
+/-- Format the given goal. If `target_lhs_only` is true and the target
+    is of the form `lhs ~ rhs`, where `~` is a simplification relation,
+    then only the `lhs` is displayed.
+
+    Remark: the parameter `target_lhs_only` is a temporary hack used to implement
+    the `conv` monad. It will be removed in the future. -/
+meta constant tactic.format_goal (g : expr) (target_lhs_only : bool := ff) : tactic format
+
 protected meta constant tactic.get_goals : tactic (list expr)
 protected meta constant tactic.set_goals : list expr → tactic unit
 
 meta def tactic.goal := expr
 
+meta instance : has_to_tactic_format tactic.goal :=
+⟨tactic.format_goal⟩
 meta instance : goal_type tactic.goal :=
 ⟨id, id⟩
 
@@ -112,10 +148,6 @@ pure ()
 
 meta def try (t : m α) : m unit :=
 try_core t >> skip
-
-meta def failed {α : Type} : tactic α := interaction_monad.failed
-meta def {u} fail {α : Type} {β : Type u} [has_to_format β] (msg : β) : tactic α :=
-interaction_monad.fail msg
 
 /-- Try to run all tactics in order. Succeed if any tactic succeeds, or else fail
     with the first error. -/
@@ -177,14 +209,13 @@ do o ← get_options,
    set_options o,
    return a
 
-meta def returnex {α : Type} : exceptional α → tactic α
+meta def returnex {α : Type} : exceptional α → m α
 | (except.ok a)    := pure a
 | (except.error f) :=
   do opts ← get_options,
-  s ← get,
-  throw { msg := (λ u, f opts), pos := none, state := s }
+  throw { msg := (λ u, f opts), pos := none }
 
-meta instance ex_to_tac {α : Type} : has_coe (exceptional α) (tactic α) :=
+meta instance ex_to_tac {α : Type} : has_coe (exceptional α) (m α) :=
 ⟨returnex⟩
 
 end tactic
@@ -192,14 +223,8 @@ end tactic
 meta def tactic_format_expr (e : expr) : tactic format :=
 do s ← get, return (tactic_state.format_expr s e)
 
-meta class {u} has_to_tactic_format (α : Type u) :=
-(to_tactic_format : α → tactic format)
-
 meta instance : has_to_tactic_format expr :=
 ⟨tactic_format_expr⟩
-
-meta def {u} tactic.pp {α : Type u} [has_to_tactic_format α] : α → tactic format :=
-has_to_tactic_format.to_tactic_format
 
 open tactic format
 
@@ -247,9 +272,8 @@ scope_impure @_root_.trace_call_stack (pure ())
 meta def timetac {α : Type} (desc : string) (t : thunk (tactic α)) : tactic α :=
 pure () >>= λ u, scope_impure (λ β, timeit desc) (t u)
 
-meta def trace_state : tactic unit :=
-do s ← get,
-   trace $ to_fmt s
+meta def trace_state : m unit :=
+do f ← format_state, trace f
 
 inductive transparency
 | all | semireducible | instances | reducible | none
@@ -705,9 +729,9 @@ do { ctx ← local_context,
      exact H }
 <|> fail "assumption tactic failed"
 
-meta def save_info (p : pos) : tactic unit :=
-do s ← get,
-   tactic.save_info_thunk p (λ _, tactic_state.to_format s)
+meta def save_info [monad_tactic m] (p : pos) : m unit :=
+do f ← delay_format_state,
+   tactic.save_info_thunk p f
 
 notation `‹` p `›` := (by assumption : p)
 
@@ -1178,7 +1202,7 @@ do ns  ← open_namespaces,
     long running tactics. -/
 meta def try_for {α} (max : nat) (tac : tactic α) : tactic α :=
 do some r ← scope_impure_opt (λ α, _root_.try_for max) tac
-     | interaction_monad.mk_exception "try_for tactic failed, timeout" none,
+     | fail "try_for tactic failed, timeout",
    pure r
 
 meta def updateex_env (f : environment → exceptional environment) : tactic unit :=

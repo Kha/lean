@@ -16,6 +16,8 @@ tactic α
 
 meta def conv.goal := tactic.goal
 
+meta instance : has_to_tactic_format conv.goal :=
+⟨λ e, tactic.format_goal e tt⟩
 meta instance : goal_type conv.goal :=
 ⟨id, id⟩
 section

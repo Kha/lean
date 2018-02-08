@@ -399,7 +399,7 @@ do (e_type : expr) ← infer_type e >>= ↑whnf,
 
 private meta def generalize_arg_p_aux : pexpr → parser (pexpr × name)
 | (app (app (macro _ [const `eq _ ]) h) (local_const x _ _ _)) := pure (h, x)
-| _ := fail "parse error"
+| _ := parser.fail "parse error"
 
 
 private meta def generalize_arg_p : parser (pexpr × name) :=

@@ -32,6 +32,17 @@ state_t _root_.ttactic.tag_info tactic
 namespace ttactic
 open tactic
 
+private meta def format_tag (t : tag) : format :=
+let t := t.filter (λ n, ¬n.is_internal) in
+match t with
+| [] := ""
+| ns := let ns := (ns.map to_fmt).intersperse ", " in
+        format!"case {format.join ns}\n"
+end
+
+meta instance : has_to_tactic_format ttactic.goal :=
+⟨λ g, (λ f, format_tag g.tag ++ f) <$> tactic.format_goal g.target⟩
+
 meta instance : goal_type ttactic.goal := {
   get_target := goal.target,
   from_target := λ t, ⟨[], t⟩
@@ -50,6 +61,7 @@ protected meta def goal_cfg {m : Type → Type}
     monad_lift $ tactic.set_goals (gs.map goal.target)
   }
 }
+
 meta instance : monad_tactic ttactic :=
 { goal_cfg := ttactic.goal_cfg }
 
@@ -221,7 +233,7 @@ do gs ← collect_tagged_goals pre,
    | [g] := return g
    | gs  := do
      tags : list (list name) ← gs.mmap (get_tag ∘ goal_type.get_target),
-     monad_lift $ fail ("invalid `case`, there is more than one goal tagged with prefix " ++ to_string pre ++ ", matching tags: " ++ to_string tags)
+     fail ("invalid `case`, there is more than one goal tagged with prefix " ++ to_string pre ++ ", matching tags: " ++ to_string tags)
    end
 
 private meta def find_tagged_goal (pre : list name) : m γ :=

@@ -34,16 +34,17 @@ section
   instance : monad (state_t σ m) :=
   { pure := @state_t.pure σ m _, bind := @state_t.bind σ m _ }
 
-  protected def orelse [alternative m] (α : Type u) (act₁ act₂ : state_t σ m α) : state_t σ m α :=
+  protected def orelse [has_orelse m] (α : Type u) (act₁ act₂ : state_t σ m α) : state_t σ m α :=
   ⟨λ s, act₁.run s <|> act₂.run s⟩
+
+  instance [has_orelse m] : has_orelse (state_t σ m) :=
+  ⟨@state_t.orelse σ m _ _⟩
 
   protected def failure [alternative m] (α : Type u) : state_t σ m α :=
   ⟨λ s, failure⟩
 
   instance [alternative m] : alternative (state_t σ m) :=
-  { failure := @state_t.failure σ m _ _,
-    orelse  := @state_t.orelse σ m _ _,
-    ..state_t.monad }
+  { failure := @state_t.failure σ m _ _ }
 
   protected def get : state_t σ m σ :=
   ⟨λ s, return (s, s)⟩

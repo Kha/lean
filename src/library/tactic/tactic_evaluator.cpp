@@ -39,7 +39,7 @@ elaborator_exception unsolved_tactic_state(tactic_state const & ts, char const *
 
 void tactic_evaluator::process_failure(vm_state & S, vm_obj const & r) {
     auto ex = *tactic::is_exception(S, r);
-    auto msg = mk_tactic_error_msg(std::get<2>(ex), std::get<0>(ex));
+    auto msg = std::get<0>(ex);
     if (optional<pos_info> pos = std::get<1>(ex)) {
         throw elaborator_exception(pos, msg);
     } else {

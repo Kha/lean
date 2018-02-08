@@ -31,7 +31,7 @@ struct interaction_monad {
         virtual vm_external * clone(vm_clone_fn const &) override;
     };
 
-    typedef std::tuple<format, optional<pos_info>, State> exception_info;
+    typedef std::tuple<format, optional<pos_info>> exception_info;
 
     static bool is_state(vm_obj const & o);
     static State const & to_state(vm_obj const & o);

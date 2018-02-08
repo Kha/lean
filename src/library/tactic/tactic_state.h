@@ -90,7 +90,7 @@ public:
     format pp_core(bool target_lhs_only = false) const;
     format pp() const;
     format pp_expr(expr const & e) const;
-    format pp_goal(expr const & g) const;
+    format pp_goal(expr const & g, bool target_lhs_only = false) const;
 };
 
 inline bool operator==(tactic_state const & s1, tactic_state const & s2) { return is_eqp(s1, s2); }

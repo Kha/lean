@@ -11,12 +11,11 @@ import init.meta.pexpr init.data.repr init.data.string.basic init.data.to_string
 
 universes u v
 
-meta structure interaction_monad_error (st : Type) :=
+meta structure interaction_monad_error :=
 (msg : unit → format)
 (pos : option pos)
-(state : st)
 
-meta def interaction_monad_error.clamp_pos {m st α} [monad_except (interaction_monad_error st) m] (line0 line col : ℕ) (x : m α) : m α :=
+meta def interaction_monad_error.clamp_pos {m α} [monad_except interaction_monad_error m] (line0 line col : ℕ) (x : m α) : m α :=
 catch x $ λ e,
   match e.pos with
   | some p := throw { pos := some $ if p.line < line0 then ⟨line, col⟩ else p, ..e }
@@ -24,7 +23,7 @@ catch x $ λ e,
   end
 
 @[irreducible] meta def interaction_monad (st : Type) :=
-state_t st $ except_t (interaction_monad_error st) id
+state_t st $ except_t interaction_monad_error id
 
 def infer_instance {α : Type u} [i : α] : α := i
 
@@ -44,17 +43,5 @@ meta instance : has_scope_impure m := infer_instance
 end
 
 meta def run := monad_run.run
-
-meta def mk_exception [has_to_format β] (msg : β) (ref : option expr) : m α :=
-do s ← get, throw ⟨(λ _, to_fmt msg), none, s⟩
-
-meta def fail [has_to_format β] (msg : β) : m α :=
-interaction_monad.mk_exception msg none
-
-meta def failed {α : Type} : m α :=
-interaction_monad.fail "failed"
-
-meta instance : monad_fail m :=
-{ fail := λ α s, interaction_monad.fail (to_fmt s), ..interaction_monad.monad }
 end
 end interaction_monad
