@@ -36,7 +36,7 @@ private meta def format_tag (t : tag) : format :=
 let t := t.filter (λ n, ¬n.is_internal) in
 match t with
 | [] := ""
-| ns := let ns := (ns.map to_fmt).intersperse ", " in
+| ns := let ns := (ns.reverse.map to_fmt).intersperse ", " in
         format!"case {format.join ns}\n"
 end
 

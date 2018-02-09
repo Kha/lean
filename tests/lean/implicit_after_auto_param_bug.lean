@@ -1,4 +1,4 @@
-meta def default_f_lt := `[apply has_lt.lt]
+meta def default_f_lt := `[[tactic] apply has_lt.lt]
 
 def f (α : Type) (lt : α → α → Prop . default_f_lt) [decidable_rel lt] : Type :=
 α

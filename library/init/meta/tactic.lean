@@ -76,7 +76,8 @@ match gs with
 | [] := pure "no goals"
 | [g] := tactic.pp g
 | gs := do gs ← gs.mmap tactic.pp,
-           pure $ format.join $ gs.intersperse (format.line ++ format.line)
+           pure $ to_fmt gs.length ++ " goals" ++ format.line ++
+                  format.join (gs.intersperse (format.line ++ format.line))
 end
 
 meta def format_state : m format :=

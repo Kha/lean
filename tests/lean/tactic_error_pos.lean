@@ -34,8 +34,8 @@ begin
                          --^ should not show error here (BUG)
 end
 
-open tactic
-meta def mytac : tactic unit :=
+
+meta def mytac : ttactic unit :=
 `[apply (or.inl _)]
 
 example (p q : Prop) (h1 : p) (h2 : q) : p ∧ q :=
