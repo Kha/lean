@@ -510,8 +510,11 @@ get_goals >>= set_goals
 meta def step {α : Type} (t : tactic α) : tactic unit :=
 t >>[tactic] cleanup
 
+section
+set_option trace.compiler.simplify_inductive true
 meta def istep {α : Type} (line0 col0 : ℕ) (line col : ℕ) (t : tactic α) : tactic unit :=
 interaction_monad_error.clamp_pos line0 line col (scope_impure (λ β, @scope_trace _ line col) (step t))
+end
 
 meta def is_prop (e : expr) : tactic bool :=
 do t ← infer_type e,

@@ -37,6 +37,7 @@ class is_lawful_applicative (f : Type u → Type v) [applicative f] extends is_l
 export is_lawful_applicative (seq_left_eq seq_right_eq pure_seq_eq_map map_pure seq_pure seq_assoc)
 attribute [simp] map_pure seq_pure
 
+set_option profiler true
 -- applicative "law" derivable from other laws
 @[simp] theorem pure_id_seq {α : Type u} {f : Type u → Type v} [applicative f] [is_lawful_applicative f] (x : f α) : pure id <*> x = x :=
 by simp [pure_seq_eq_map]

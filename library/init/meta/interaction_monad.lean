@@ -36,7 +36,12 @@ local notation `m` := interaction_monad st
 
 section
 local attribute [reducible] interaction_monad
-meta instance : monad m := infer_instance
+attribute [reducible] infer_instance
+attribute [inline] except_t.bind state_t.bind except_t.bind_cont return state_t.pure except_t.return state_t.get scope_impure
+
+protected meta def pure := @has_pure.pure m _
+protected meta def bind := @has_bind.bind m _
+meta instance : monad m := {pure := @pure, bind := @bind}
 meta instance : monad_run _ m := infer_instance
 meta instance : monad_except _ m := infer_instance
 meta instance : monad_state_lift _ _ m := infer_instance
