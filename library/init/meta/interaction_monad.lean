@@ -34,7 +34,15 @@ local notation `m` := interaction_monad st
 
 section
 local attribute [reducible] interaction_monad
-meta instance : monad m := infer_instance
+
+/- Flattening the monad stack's bind by inlining is quite beneficial for tactic run time,
+   but not for tactic compile time if done for every single occurrence of pure or bind. Thus, we
+   define and optimize them just once in this file. Because these new definitions are not reducible,
+   they will not be inlined themselves.
+   In the future, we would like to inline already-optimized IR, which would avoid this issue. -/
+protected meta def bind := @has_bind.bind m _
+
+meta instance : monad m := { bind := @bind }
 meta instance : monad_run _ m := infer_instance
 meta instance : monad_except _ m := infer_instance
 meta instance : monad_state_lift _ _ m := infer_instance
