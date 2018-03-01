@@ -62,12 +62,12 @@ attribute [simp] pure_bind
 @[simp] theorem bind_pure {α : Type u} {m : Type u → Type v} [monad m] [is_lawful_monad m] (x : m α) : x >>= pure = x :=
 show x >>= pure ∘ id = x, by rw bind_pure_comp_eq_map; simp [id_map]
 
-lemma bind_ext_congr {α β} {m : Type u → Type v} [has_bind m] {x : m α} {f : α → m β} (g : α → m β) :
+lemma bind_ext_congr {α β} {m : Type u → Type v} [has_bind m] {x : m α} {f g : α → m β} :
   (∀ a, f a = g a) →
   x >>= f = x >>= g :=
 λ h, by simp [show f = g, from funext h]
 
-lemma map_ext_congr {α β} {m : Type u → Type v} [has_map m] {x : m α} {f : α → β} (g : α → β) :
+lemma map_ext_congr {α β} {m : Type u → Type v} [has_map m] {x : m α} {f g : α → β} :
   (∀ a, f a = g a) →
   (f <$> x : m β) = g <$> x :=
 λ h, by simp [show f = g, from funext h]
