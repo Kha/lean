@@ -69,6 +69,29 @@ instance monad_functor_t_refl (m m') : monad_functor_t m m' m m' :=
 @[simp] lemma monad_map_refl {m m' : Type u → Type v} (f : ∀ {α}, m α → m' α) {α} : (monad_map @f : m α → m' α) = f := rfl
 
 
+/-- Lift control operations such as `catch` - http://duairc.netsoc.ie/layers-docs/Control-Monad-Layer.html#t:MonadLayerControl -/
+class monad_control (st : out_param $ Type u → Type u) (m : Type u → Type u) (n : Type u → Type u) :=
+(monad_lift_control {α : Type u} : ((∀ {β}, n β → m (st β)) → m α) → n α)
+(restore {} {α : Type u} : st α → n α)
+
+/-- The reflexive-transitive closure of `monad_control`. -/
+class monad_control_t (st : out_param $ Type u → Type u) (m : Type u → Type u) (n : Type u → Type u) :=
+(monad_lift_control {α : Type u} : ((∀ {β}, n β → m (st β)) → m α) → n α)
+(restore {} {α : Type u} : st α → n α)
+
+export monad_control_t (monad_lift_control restore)
+
+instance monad_control_t_trans (st st' m n o) [monad_control st n o] [monad_control_t st' m n] [has_monad_lift n o] [monad m] [monad o] : monad_control_t (st' ∘ st) m o :=
+{ monad_lift_control := λ α f, monad_control.monad_lift_control $ λ run,
+    monad_lift_control $ λ (run' : ∀ {β}, n β → m (st' β)),
+      f $ λ β, run' ∘ run,
+  restore := λ α s, monad_lift (restore m s : n _) >>= monad_control.restore n }
+
+instance has_monad_control_t_refl (m) [monad m] : monad_control_t id m m :=
+{ monad_lift_control := λ α f, f $ λ β, id,
+  restore := λ α, pure }
+
+
 /-- Run a monad stack to completion.
     `run` should be the composition of the transformers' individual `run` functions.
     `unrun` should be its inverse.
@@ -88,13 +111,14 @@ export monad_run (run unrun)
 
 /-- Lift an impure scoping function.
     The helper functions in init.util take a thunk of a pure computation and execute it under some side
-    effect. For monads like `state_t` that are "lazy", i.e. evaluate to a closure, we have to special
-    case these operations to go inside these binders and work on the strict "core". -/
-class has_scope_impure (m : Type u → Type v) :=
-(scope_impure_opt {} {α : Type u} : (∀ {β : Type u}, thunk β → option β) → thunk (m α) → m (option α))
+    effect. For monads like `state_t` that are "lazy", i.e. evaluate to a closure, we use
+    `monad_lift_control` to go inside these binders and work on the strict "core". -/
+@[inline] meta def scope_impure_opt {st : Type u → Type u} {m : Type u → Type u} [monad m] [monad_control_t st id m] {α : Type u} :
+  (∀ {β : Type u}, thunk β → option β) → m α → m (option α) :=
+λ f x, do some s' ← monad_lift_control (λ (run : ∀ {β}, m β → id (st β)), (f (run x)))
+           | pure none,
+          some <$> restore id s'
 
-export has_scope_impure (scope_impure_opt)
-
-@[inline] meta def scope_impure {m : Type u → Type v} [monad m] [has_scope_impure m] {α : Type u} :
+@[inline] meta def scope_impure {st : Type u → Type u} {m : Type u → Type u} [monad m] [monad_control_t st id m] {α : Type u} :
   (∀ {β : Type u}, thunk β → β) → m α → m α :=
-λ f x, scope_impure_opt (λ β, some ∘ f) x >>= λ o, option.rec undefined pure o
+λ f x, monad_lift_control (λ run, (f (run x) : id (st α))) >>= restore id

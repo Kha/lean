@@ -16,6 +16,3 @@ universe u
 
 @[inline] instance : monad_run id id :=
 ⟨@id, @id⟩
-
-@[inline] instance : has_scope_impure id :=
-⟨λ α f x, f (x ())⟩

@@ -65,7 +65,7 @@ meta instance : monad smt_tactic := by apply_instance
 meta instance : alternative smt_tactic := by apply_instance
 meta instance : monad_state_lift _ _ smt_tactic := by apply_instance
 meta instance : monad_except _ smt_tactic := by apply_instance
-meta instance : has_scope_impure smt_tactic := by apply_instance
+meta instance : monad_control_t _ id smt_tactic := by apply_instance
 end
 
 /- We don't use the default state_t lift operation because only

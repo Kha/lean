@@ -46,7 +46,7 @@ meta instance : monad m := { bind := @bind }
 meta instance : monad_run _ m := infer_instance
 meta instance : monad_except _ m := infer_instance
 meta instance : monad_state_lift _ _ m := infer_instance
-meta instance : has_scope_impure m := infer_instance
+meta instance : monad_control_t _ id m := infer_instance
 end
 
 meta def run := interaction_monad.monad_run.run
