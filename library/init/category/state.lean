@@ -69,7 +69,8 @@ section
   -- TODO(Sebastian): uses lenses as in https://hackage.haskell.org/package/lens-4.15.4/docs/Control-Lens-Zoom.html#t:Zoom ?
   protected def zoom {σ σ' α : Type u} {m : Type u → Type v} [monad m] (get : σ → σ')
     (set : σ' → σ → σ) (x : state_t σ' m α) : state_t σ m α :=
-  ⟨λ st, (λ p : α × σ', (p.fst, set p.snd st)) <$> x.run (get st)⟩
+  ⟨λ st, do (a, st') ← x.run (get st),
+            pure (a, set st' st)⟩
 
   instance (ε) [monad_except ε m] : monad_except ε (state_t σ m) :=
   { throw := λ α, state_t.lift ∘ throw,

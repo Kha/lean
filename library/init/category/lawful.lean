@@ -113,7 +113,10 @@ section
   @[simp] lemma run_monad_map {m' n n'} [monad m'] [monad_functor_t n n' m m'] (f : ∀ {α}, n α → n' α) :
     (monad_map @f x : state_t σ m' α).run st = monad_map @f (x.run st) := rfl
   @[simp] lemma run_zoom {σ'} (st get set) :
-    (state_t.zoom get set x : state_t σ' m α).run st = (λ p : α × σ, (p.1, set p.2 st)) <$> x.run (get st) := rfl
+    (state_t.zoom get set x : state_t σ' m α).run st =
+    do (a, st') ← x.run (get st),
+       pure (a, set st' st) :=
+  by delta state_t.zoom; refl
   @[simp] lemma run_get : (state_t.get : state_t σ m σ).run st = pure (st, st) := rfl
   @[simp] lemma run_put (st') : (state_t.put st' : state_t σ m _).run st = pure (punit.star, st') := rfl
 end
