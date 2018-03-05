@@ -15,6 +15,8 @@ structure reader_t (ρ : Type u) (m : Type u → Type v) (α : Type u) : Type (m
 
 @[reducible] def reader (ρ : Type u) := reader_t ρ id
 
+attribute [pp_using_anonymous_constructor] reader_t
+
 namespace reader_t
 section
   variable  {ρ : Type u}
