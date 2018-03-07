@@ -19,8 +19,13 @@ do 0 ← read,  -- unlifted
 
 #eval (lifted_test.run 0).run 1
 
+def infer_test {m n} [monad_state_lift ℕ m n] [monad m] [monad n] : n ℕ :=
+do n ← get,
+   -- can infer σ through class inference
+   pure n.succ
+
 def zoom_test : reader_t ℕ (state_t (ℕ × ℕ) io) unit :=
-do -- zoom into first elem
+do -- zoom in on first elem
    zoom (λ p, prod.fst p) -- note: type of `p` is not known yet
          (λ n p, (n, prod.snd p))
          -- note: inner monad type must be known
