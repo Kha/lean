@@ -71,10 +71,6 @@ section
     (set : σ' → σ → σ) (x : state_t σ' m α) : state_t σ m α :=
   ⟨λ st, do (a, st') ← x.run (get st),
             pure (a, set st' st)⟩
-
-  instance (ε) [monad_except ε m] : monad_except ε (state_t σ m) :=
-  { throw := λ α, state_t.lift ∘ throw,
-    catch := λ α x c, ⟨λ s, catch (x.run s) (λ e, state_t.run (c e) s)⟩ }
 end
 end state_t
 

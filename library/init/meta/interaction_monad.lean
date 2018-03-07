@@ -16,7 +16,7 @@ meta structure interaction_monad_error (st : Type) :=
 (pos : option pos)
 (state : st)
 
-meta def interaction_monad_error.clamp_pos {m st α} [monad_except (interaction_monad_error st) m] (line0 line col : ℕ) (x : m α) : m α :=
+@[inline] meta def interaction_monad_error.clamp_pos {m st α} [monad_except (interaction_monad_error st) m] (line0 line col : ℕ) (x : m α) : m α :=
 catch x $ λ e,
   match e.pos with
   | some p := throw { pos := some $ if p.line < line0 then ⟨line, col⟩ else p, ..e }

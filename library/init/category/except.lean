@@ -74,7 +74,10 @@ section
   instance : has_monad_lift m (except_t ε m) :=
   ⟨@except_t.lift⟩
 
-  protected def catch {α : Type u} (ma : except_t ε m α) (handle : ε → except_t ε m α) : except_t ε m α :=
+  @[inline] protected def throw {α : Type u} (e : ε) : except_t ε m α :=
+  ⟨pure $ except.error e⟩
+
+  @[inline] protected def catch {α : Type u} (ma : except_t ε m α) (handle : ε → except_t ε m α) : except_t ε m α :=
   ⟨ma.run >>= λ res, match res with
    | except.ok a    := pure (except.ok a)
    | except.error e := (handle e).run
@@ -112,7 +115,11 @@ end monad_except
 export monad_except (throw catch)
 
 instance (m ε) [monad m] : monad_except ε (except_t ε m) :=
-{ throw := λ α, except_t.mk ∘ pure ∘ except.error, catch := @except_t.catch ε _ _ }
+{ throw := @except_t.throw ε _ _, catch := @except_t.catch ε _ _ }
+
+instance monad_except_trans {st : Type u → Type u} {ε : Type u} {m n : Type u → Type u} [has_monad_lift m n] [monad_control st m n] [monad_except ε m] [monad m] [monad n] : monad_except ε n :=
+{ throw := λ α e, monad_lift (throw e : m α),
+  catch := λ α ma f, monad_lift_control (λ (run : ∀ {β}, n β → m (st β)), catch (run ma) (run ∘ f)) >>= restore m }
 
 
 instance (ε : Type u) (m) [monad m] : monad_control.{u} (except ε) m (except_t ε m) :=
