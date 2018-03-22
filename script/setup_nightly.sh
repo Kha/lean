@@ -2,9 +2,10 @@
 # script should be sourced
 
 git remote add nightly "https://$GH_TOKEN@github.com/leanprover/lean-nightly.git"
-git fetch nightly --tags
+git fetch --all --tags
+git checkout 8f55ec4
 
-export LEAN_VERSION_STRING="nightly-$(date -u +%F)"
+export LEAN_VERSION_STRING="nightly-2018-04-06"
 
 # do nothing if commit is already tagged
 if git checkout $LEAN_VERSION_STRING || ! git name-rev --name-only --tags --no-undefined HEAD
